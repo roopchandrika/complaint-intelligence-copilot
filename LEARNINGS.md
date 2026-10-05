@@ -1,6 +1,6 @@
 # Learnings
 
-## Day 1 — FDE role and project setup (2026-10-05)
+## Day 1 - FDE role and project setup (2026-10-05)
 
 ### What I built
 - Created the project repo and a README that explains the client scenario.
