@@ -1,6 +1,6 @@
 # Learnings
 
-## Day 1 — FDE role and project setup (2026-10-05)
+## Day 1 - FDE role and project setup (2026-10-05)
 
 ### What I built
 - Created the project repo and a README that explains the client scenario.
@@ -35,7 +35,7 @@
 - If I download the data again, some complaints will appear twice. I will still build a
   step that removes duplicates (Day 6), even though there are none today.
 
-## Day 2 — Advanced SQL: CTEs, joins, window functions (2026-10-05)
+## Day 2 - Advanced SQL: CTEs, joins, window functions (2026-10-05)
 
 ### What I built
 - data/load_duckdb.py: loads the 18M-row CFPB CSV into a DuckDB table called `complaints`.
