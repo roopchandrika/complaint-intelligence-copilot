@@ -91,7 +91,7 @@
 - "State" has 63 values, including territories and military codes, not just 50 states + DC.
 - The narrative column is missing from my file; it is needed for RAG on Day 22.
 
-## Day 3 — Query performance: EXPLAIN ANALYZE, indexes, scans vs seeks (2026-10-06)
+## Day 3 - Query performance: EXPLAIN ANALYZE, indexes, scans vs seeks (2026-10-06)
 
 ### What I built
 - docker-compose.yml: Postgres 16 in Docker.
@@ -159,7 +159,7 @@
 - Environment issues (container names, ports, shared memory, forgotten containers)
   caused as many problems as the SQL itself.
 
-## Day 4 — Legacy enterprise databases: SQL Server, drivers, safe access (2026-10-06)
+## Day 4 - Legacy enterprise databases: SQL Server, drivers, safe access (2026-10-06)
 
 ### What I built
 - docker-compose.legacy.yml: SQL Server 2022 in Docker, playing the bank's old case system.
