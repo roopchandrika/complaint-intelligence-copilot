@@ -1,0 +1,31 @@
+﻿====================================================================================================
+[13] DRILL 11. Review EVERY merge: companies built from more than one raw spelling. A wrong merge | (two different companies under one name) is worse than a missed one, so read this list.
+┌───────────────────────────────────────┬────────────┬───────────────────┬───────────────────────────────────────────────────────────────────────────────┐
+│                company                │ complaints │ raw_name_variants │                                 raw_spellings                                 │
+│                varchar                │   int64    │       int64       │                                    varchar                                    │
+├───────────────────────────────────────┼────────────┼───────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ ONEMAIN FINANCE                       │      12885 │                 2 │ ONEMAIN FINANCE CORPORATION | OneMain Finance Corporation                     │
+│ FLAGSTAR BANK                         │       4707 │                 2 │ Flagstar Bank, N.A. | Flagstar Bank, National Association                     │
+│ SETERUS                               │       4487 │                 2 │ SETERUS INC | Seterus, Inc.                                                   │
+│ FIRST TECHNOLOGY FEDERAL CREDIT UNION │       1853 │                 2 │ FIRST TECHNOLOGY FEDERAL CREDIT UNION | First Technology Federal Credit Union │
+│ PEOPLES UNITED BANK                   │        786 │                 2 │ PEOPLE'S UNITED BANK, NATIONAL ASSOCIATION | PEOPLES UNITED BANK              │
+│ RIVERWALK FINANCIAL                   │        637 │                 2 │ Riverwalk Financial CORPORATION | Riverwalk Financial Corporation             │
+│ PENDRICK CAPITAL PARTNERS             │        545 │                 2 │ Pendrick Capital Partners | Pendrick Capital Partners Holding, LLC            │
+│ GLOBAL CREDIT UNION                   │        295 │                 2 │ GLOBAL CREDIT UNION | Global Credit Union                                     │
+│ C C FINANCIAL                         │        263 │                 2 │ C & C FINANCIAL, CORP | C/C Financial                                         │
+│ COLLECTION BUREAU                     │         77 │                 2 │ COLLECTION BUREAU INCORPORATED | The Collection Bureau Inc.                   │
+│ CFM GROUP                             │         67 │                 2 │ CFM Group LLC | The CFM Group                                                 │
+│ ELITE FINANCIAL SERVICES              │         47 │                 2 │ ELITE FINANCIAL SERVICES INC | Elite Financial Services, Inc.                 │
+│ SYNERGY ONE LENDING                   │         30 │                 2 │ SYNERGY ONE LENDING, INC. | Synergy One Lending, Inc.                         │
+│ RECEIVABLES MANAGEMENT ASSOCIATES     │         29 │                 2 │ Receivables Management Associates | Receivables Management Associates, Inc.   │
+│ CREDIT SOLUTIONS                      │         27 │                 2 │ Credit Solutions | Credit Solutions LLC                                       │
+│ REVENUE CYCLE MANAGEMENT              │         22 │                 2 │ Revenue Cycle Management | Revenue Cycle Management Corp                      │
+│ SOLERA                                │         10 │                 2 │ SOLERA LLC | Solera                                                           │
+│ SUMMIT MORTGAGE CORP                  │          8 │                 2 │ SUMMIT MORTGAGE CORPORATION | Summit Mortgage Corporation                     │
+│ ATM OPS                               │          5 │                 2 │ ATM OPS INC | ATM OPS Inc                                                     │
+│ COLLECTION SPECIALISTS                │          4 │                 2 │ Collection Specialists | Collection Specialists, Inc.                         │
+│ MORTGAGE FINANCIAL SERVICES           │          4 │                 2 │ MORTGAGE FINANCIAL SERVICES | MORTGAGE FINANCIAL SERVICES, INC                │
+└───────────────────────────────────────┴────────────┴───────────────────┴───────────────────────────────────────────────────────────────────────────────┘
+  21 rows                                                                                                                                      4 columns
+
+(11 ms)

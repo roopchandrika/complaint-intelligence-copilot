@@ -213,7 +213,7 @@
 - SOAP services describe themselves in a WSDL file. Zeep reads it, builds the XML request,
   and turns the XML answer into Python objects I can save as JSON.
 
-## Day 5 — Data modeling: star schema, facts, dimensions, grain (2026-10-06)
+## Day 5 - Data modeling: star schema, facts, dimensions, grain (2026-10-06)
 
 ### What I built
 - sql/star_schema.sql: a star schema in its own "star" schema in DuckDB.
@@ -262,3 +262,76 @@
   the original values.
 - Type 2 history keeps old versions of a row with valid-from and valid-to dates, so old
   complaints show the company name that was correct at the time.
+
+## Day 6 - Medallion layers: Bronze → Silver → Gold (2026-10-06)
+
+### What I built
+- data/medallion/run_pipeline.py: one command builds all three layers in data/warehouse.duckdb.
+- Bronze: the CSV exactly as received (all text) plus when, from which file and in which
+  batch each row arrived. Re-loading the same file replaces its batch (no duplicates).
+- Silver: typed, cleaned, one row per complaint. Bad rows go to a rejects table with a
+  reason; duplicates are removed (newest copy wins); problems are flagged, not deleted.
+- Gold: 4 small business tables (monthly product stats, company scorecard, top issues
+  per company, forwarding speed by channel).
+- Seeds: small reference lists I control (product groups, issue renames, company merges,
+  state codes and aliases).
+- dq_report.py: DQ_REPORT.md with 5 reconciliation checks, completeness, flags,
+  company merges and timings.
+- company_candidates.py: suggests look-alike company names for a person to review.
+
+### Problems I hit and how I fixed them
+- 1,528 complaints had the state written as "UNITED STATES MINOR OUTLYING ISLANDS"
+  instead of the code UM, so they were flagged as invalid.
+  Fix: a state alias list that maps full names to codes.
+- Company cleaning removed too much: "CL Holdings LLC" became "CL".
+  Fix: remove HOLDINGS / GROUP only when at least two words remain.
+- "IPAC'S Inc." became "IPAC S" and "L.P." was not removed.
+  Fix: delete apostrophes instead of replacing them with a space; add "L P" to the suffix list.
+- Reviewing all company merges by hand found wrong ones:
+  "Credit Corp Solutions Inc." was merged into "Credit Solutions" (the rule removed CORP
+  from the middle of the name), and "Independent Bank Corp." (Massachusetts) was merged
+  with "Independent Bank Group, Inc." (Texas), two different banks.
+  Fix: remove suffixes only from the end of a name, and merge spellings only when they
+  share the same legal form (Inc = Incorporated, Corp = Corporation, N.A. = National
+  Association). Different legal forms stay separate unless I add them to company_map.csv.
+- On test data, the fuzzy matcher scored "First National Bank of Omaha" and
+  "...of Pennsylvania" as 88% similar. They are different banks.
+  Lesson: fuzzy matching only suggests; a person decides.
+
+### Numbers
+- Bronze 18,191,687 = Silver 18,191,687 + 0 rejected + 0 duplicates. All 5 checks PASS.
+- Run time: Bronze 27 s, Silver 109 s, Gold 2 s. Running it twice gives identical results.
+- Rebuilding Silver and Gold after each fix took about 75 seconds, without reloading Bronze.
+- Company names: 8,144 raw spellings became 8,123 companies. The first rule merged 67
+  spellings; after manual review and the safer rule, 21 merges remain, all checked by hand.
+- 790,264 rows renamed from old to current CFPB issue names. The data confirms the
+  mapping: every old name stops on 2017-04-21/22 and its new name starts on 2017-04-24.
+- Flags kept for review: 7,050 complaints sent before they were received;
+  0 invalid state codes (1,528 before the alias fix).
+- 3 companies late on 99%+ of 500+ complaints, flagged for checking
+  (Federal Student Aid servicer: 7,544 complaints, 100% late).
+- Day 3's slowest question (forwarding time by channel): 133 s in Postgres,
+  446 ms from Silver, 2 ms from Gold.
+- The narrative, consent and disputed columns are missing from my file (100% empty).
+
+### What I learned
+- Keep raw data untouched (Bronze). If a cleaning rule is wrong, I can rebuild Silver
+  in about a minute without downloading the data again. I did that three times today.
+- Never delete bad data silently. Rows that cannot be used go to a rejects table with
+  a reason; suspicious rows get a flag column.
+- Reconciliation proves nothing was lost: Bronze = Silver + rejects + duplicates removed,
+  and every Gold table adds back up to Silver.
+- Idempotent means running the pipeline twice gives the same result. Replacing tables
+  instead of appending is what makes that true.
+- Do expensive work on distinct values: cleaning about 8,000 company names once is far
+  cheaper than cleaning 18 million rows.
+- Rules, then a reviewed list, then fuzzy suggestions, in that order. In a bank, merging
+  two different companies is worse than leaving two spellings of one company.
+- Generic names (Credit Control, First Mortgage, Independent Bank) with different legal
+  forms are often different companies. When unsure, keep them apart.
+- Check mappings against the data: first-seen and last-seen dates proved the issue
+  renames instead of me guessing.
+- Gold tables answer business questions in milliseconds because the hard work happened once.
+- Automatic checks all passed while some cleaning was wrong. Checks prove counts, not
+  the correctness of every value. Only reading the report and the merge list found the
+  mistakes.

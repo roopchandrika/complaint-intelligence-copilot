@@ -1,0 +1,201 @@
+﻿====================================================================================================
+[1] DRILL 1. Profile Bronze before cleaning anything: type, distinct values, nulls, min/max for every column.
+┌──────────────────────────────┬─────────────┬───────────────────────────────────┬──────────────────────┬───────────────┬───┬──────────────────────┬──────────────────────┬──────────┬─────────────────┐
+│         column_name          │ column_type │                min                │         max          │ approx_unique │ … │         q50          │         q75          │  count   │ null_percentage │
+│           varchar            │   varchar   │              varchar              │       varchar        │     int64     │ … │       varchar        │       varchar        │  int64   │  decimal(9,2)   │
+├──────────────────────────────┼─────────────┼───────────────────────────────────┼──────────────────────┼───────────────┼───┼──────────────────────┼──────────────────────┼──────────┼─────────────────┤
+│ date_received                │ VARCHAR     │ 2011-12-01                        │ 2026-10-05           │          5145 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ product                      │ VARCHAR     │ Bank account or service           │ Virtual currency     │            18 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ sub_product                  │ VARCHAR     │ (CD) Certificate of deposit       │ Virtual currency     │            84 │ … │ NULL                 │ NULL                 │ 18191687 │            1.29 │
+│ issue                        │ VARCHAR     │ APR or interest rate              │ Wrong amount charge… │           190 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ sub_issue                    │ VARCHAR     │ Account information incorrect     │ You told them to st… │           274 │ … │ NULL                 │ NULL                 │ 18191687 │            5.16 │
+│ consumer_complaint_narrative │ VARCHAR     │ NULL                              │ NULL                 │             0 │ … │ NULL                 │ NULL                 │ 18191687 │          100.00 │
+│ company_public_response      │ VARCHAR     │ Company believes complaint cause… │ Company has respond… │            12 │ … │ NULL                 │ NULL                 │ 18191687 │           44.90 │
+│ company                      │ VARCHAR     │ (Former)Shapiro, Swertfeger & Ha… │  Lippman Recupero, … │         10239 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ state                        │ VARCHAR     │ AA                                │ WY                   │            71 │ … │ NULL                 │ NULL                 │ 18191687 │            0.35 │
+│ zip_code                     │ VARCHAR     │ (1352                             │ XXXXX                │         41958 │ … │ NULL                 │ NULL                 │ 18191687 │            0.02 │
+│ tags                         │ VARCHAR     │ Older American                    │ Servicemember        │             3 │ … │ NULL                 │ NULL                 │ 18191687 │           95.52 │
+│ consumer_consent_provided    │ VARCHAR     │ NULL                              │ NULL                 │             0 │ … │ NULL                 │ NULL                 │ 18191687 │          100.00 │
+│ submitted_via                │ VARCHAR     │ Email                             │ Web                  │             6 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ date_sent_to_company         │ VARCHAR     │ 2011-12-01                        │ 2026-10-05           │          5145 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ company_response_to_consumer │ VARCHAR     │ Closed                            │ Untimely response    │             9 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ timely_response              │ VARCHAR     │ No                                │ Yes                  │             2 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ consumer_disputed            │ VARCHAR     │ NULL                              │ NULL                 │             0 │ … │ NULL                 │ NULL                 │ 18191687 │          100.00 │
+│ complaint_id                 │ VARCHAR     │ 1                                 │ 9999997              │      16123150 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ _ingested_at                 │ TIMESTAMP   │ 2026-10-06 16:09:53.636254        │ 2026-10-06 16:09:53… │             1 │ … │ 2026-10-06 16:09:53… │ 2026-10-06 16:09:53… │ 18191687 │            0.00 │
+│ _source_file                 │ VARCHAR     │ complaints.csv                    │ complaints.csv       │             1 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+│ _batch_id                    │ VARCHAR     │ 4d05db8c6062                      │ 4d05db8c6062         │             1 │ … │ NULL                 │ NULL                 │ 18191687 │            0.00 │
+└──────────────────────────────┴─────────────┴───────────────────────────────────┴──────────────────────┴───────────────┴───┴──────────────────────┴──────────────────────┴──────────┴─────────────────┘
+  21 rows                                                                                                                                                                         12 columns (9 shown)
+
+(1804 ms)
+====================================================================================================
+[2] DRILL 2. Lineage: one Silver row next to the exact Bronze row it came from (what did cleaning change?).
+┌─────────┬──────────────┬───────────────┬────────────────────────────────────────┬─────────┬─────────────────┬───────────────┐
+│  layer  │ complaint_id │    company    │                 issue                  │  state  │ timely_response │ date_received │
+│ varchar │   varchar    │    varchar    │                varchar                 │ varchar │     varchar     │    varchar    │
+├─────────┼──────────────┼───────────────┼────────────────────────────────────────┼─────────┼─────────────────┼───────────────┤
+│ bronze  │ 175591       │ EQUIFAX, INC. │ Incorrect information on credit report │ OH      │ Yes             │ 2012-10-22    │
+│ silver  │ 175591       │ EQUIFAX       │ Incorrect information on your report   │ OH      │ true            │ 2012-10-22    │
+└─────────┴──────────────┴───────────────┴────────────────────────────────────────┴─────────┴─────────────────┴───────────────┘
+
+(92 ms)
+====================================================================================================
+[3] DRILL 3. Company cleaning: every raw spelling that became one company, for the 15 biggest companies.
+┌────────────────────────────────┬───────────────┬────────────────────────────────────────┐
+│            company             │ raw_spellings │               spellings                │
+│            varchar             │     int64     │                varchar                 │
+├────────────────────────────────┼───────────────┼────────────────────────────────────────┤
+│ JPMORGAN CHASE                 │             1 │ JPMORGAN CHASE & CO.                   │
+│ CAPITAL ONE                    │             1 │ CAPITAL ONE FINANCIAL CORPORATION      │
+│ SYNCHRONY                      │             1 │ SYNCHRONY FINANCIAL                    │
+│ PORTFOLIO RECOVERY ASSOCIATES  │             1 │ Portfolio Recovery Associates, LLC     │
+│ AMERICAN EXPRESS               │             1 │ AMERICAN EXPRESS COMPANY               │
+│ EQUIFAX                        │             1 │ EQUIFAX, INC.                          │
+│ TRANSUNION                     │             1 │ TRANSUNION INTERMEDIATE HOLDINGS, INC. │
+│ WELLS FARGO                    │             1 │ WELLS FARGO & COMPANY                  │
+│ EXPERIAN                       │             1 │ Experian Information Solutions Inc.    │
+│ RESURGENT CAPITAL SERVICES L P │             1 │ Resurgent Capital Services L.P.        │
+│ BANK OF AMERICA                │             1 │ BANK OF AMERICA, NATIONAL ASSOCIATION  │
+│ LEXISNEXIS                     │             1 │ LEXISNEXIS                             │
+│ ENCORE CAPITAL                 │             1 │ ENCORE CAPITAL GROUP INC.              │
+│ BLOCK                          │             1 │ Block, Inc.                            │
+│ CITIBANK                       │             1 │ CITIBANK, N.A.                         │
+└────────────────────────────────┴───────────────┴────────────────────────────────────────┘
+  15 rows                                                                       3 columns
+
+(8 ms)
+====================================================================================================
+[4] DRILL 4. Evidence for the issue_map: an old name should stop around the date the new name starts.
+┌──────────────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────────┬────────────┬────────────┬─────────┐
+│                                    issue_raw                                     │                            mapped_to                            │ first_seen │ last_seen  │  rows   │
+│                                     varchar                                      │                             varchar                             │    date    │    date    │  int64  │
+├──────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────┼────────────┼────────────┼─────────┤
+│ Cont'd attempts collect debt not owed                                            │ Attempts to collect debt not owed                               │ 2013-07-10 │ 2017-04-21 │   60520 │
+│ Attempts to collect debt not owed                                                │ Attempts to collect debt not owed                               │ 2017-04-24 │ 2026-10-05 │  488571 │
+│ Credit monitoring or identity protection                                         │ Credit monitoring or identity theft protection services         │ 2012-10-23 │ 2017-04-21 │    4424 │
+│ Credit monitoring or identity theft protection services                          │ Credit monitoring or identity theft protection services         │ 2017-04-24 │ 2026-10-05 │   40718 │
+│ Improper use of my credit report                                                 │ Improper use of your report                                     │ 2012-10-23 │ 2017-04-21 │    5579 │
+│ Improper use of your report                                                      │ Improper use of your report                                     │ 2017-04-24 │ 2026-10-05 │ 3470438 │
+│ Incorrect information on credit report                                           │ Incorrect information on your report                            │ 2012-10-22 │ 2017-04-22 │  102681 │
+│ Incorrect information on your report                                             │ Incorrect information on your report                            │ 2017-04-24 │ 2026-10-05 │ 8259331 │
+│ Credit reporting company's investigation                                         │ Problem with a company's investigation into an existing problem │ 2012-10-22 │ 2017-04-21 │   16883 │
+│ Problem with a credit reporting company's investigation into an existing problem │ Problem with a company's investigation into an existing problem │ 2017-04-24 │ 2023-08-25 │  589318 │
+│ Problem with a company's investigation into an existing problem                  │ Problem with a company's investigation into an existing problem │ 2023-08-25 │ 2026-10-05 │ 2388121 │
+│ Unable to get credit report/credit score                                         │ Unable to get your credit report or credit score                │ 2012-10-22 │ 2017-04-21 │   10859 │
+│ Unable to get your credit report or credit score                                 │ Unable to get your credit report or credit score                │ 2017-04-24 │ 2026-10-04 │   65983 │
+└──────────────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────────┴────────────┴────────────┴─────────┘
+  13 rows                                                                                                                                                                      5 columns
+
+(208 ms)
+====================================================================================================
+[5] DRILL 5. Duplicates: complaint IDs that appeared more than once in Bronze, and which copy Silver kept.
+┌──────────────┬──────────────────┬───────────────────────┐
+│ complaint_id │ bronze_date_sent │ silver_kept_date_sent │
+│   varchar    │     varchar      │         date          │
+└──────────────┴──────────────────┴───────────────────────┘
+                          0 rows                         
+
+(667 ms)
+====================================================================================================
+[6] DRILL 6. The quarantine: rejected rows keep every original value plus the reason.
+┌───────────────┬──────────────┬───────────────┬─────────┬─────────┐
+│ reject_reason │ complaint_id │ date_received │ company │ product │
+│    varchar    │   varchar    │    varchar    │ varchar │ varchar │
+└───────────────┴──────────────┴───────────────┴─────────┴─────────┘
+                               0 rows                             
+
+(1 ms)
+====================================================================================================
+[7] DRILL 7. The incomplete current month is flagged, so trend charts can leave it out.
+┌────────────┬────────────┬──────────────────┐
+│   month    │ complaints │ is_partial_month │
+│    date    │   int128   │     boolean      │
+├────────────┼────────────┼──────────────────┤
+│ 2026-10-01 │      29651 │ true             │
+│ 2026-09-01 │     654156 │ false            │
+│ 2026-08-01 │     643257 │ false            │
+│ 2026-07-01 │     669802 │ false            │
+└────────────┴────────────┴──────────────────┘
+
+(4 ms)
+====================================================================================================
+[8] DRILL 8a. Day 3's slow question Q5 (late responders), answered from SILVER (scans every row).
+┌──────────────────────────────────────────────────┬────────────┬──────────┐
+│                     company                      │ complaints │ late_pct │
+│                     varchar                      │   int64    │  double  │
+├──────────────────────────────────────────────────┼────────────┼──────────┤
+│ SERVICER UNDER CONTRACT WITH FEDERAL STUDENT AID │       7544 │    100.0 │
+│ MOBILOANS                                        │        910 │    100.0 │
+│ IPAC S                                           │        567 │    99.82 │
+│ WILLIAMS RUSH ASSOCIATES                         │        655 │    74.66 │
+│ AMERASSIST A R SOLUTIONS                         │        575 │    58.78 │
+│ FIDELITY CAPITAL                                 │        589 │     58.4 │
+│ WESTCREEK FINANCIAL                              │       1261 │    39.97 │
+│ CONDUENT                                         │       2371 │    38.38 │
+│ CAPITAL ACCOUNTS                                 │       1477 │    38.25 │
+│ PHOENIX RECOVERY                                 │        633 │    37.28 │
+└──────────────────────────────────────────────────┴────────────┴──────────┘
+  10 rows                                                        3 columns
+
+(44 ms)
+====================================================================================================
+[9] DRILL 8b. The same question answered from GOLD (pre-aggregated). Compare the two timings.
+┌──────────────────────────────────────────────────┬────────────┬──────────┬───────────────────┐
+│                     company                      │ complaints │ late_pct │ dq_check_all_late │
+│                     varchar                      │   int64    │  double  │      boolean      │
+├──────────────────────────────────────────────────┼────────────┼──────────┼───────────────────┤
+│ SERVICER UNDER CONTRACT WITH FEDERAL STUDENT AID │       7544 │    100.0 │ true              │
+│ MOBILOANS                                        │        910 │    100.0 │ true              │
+│ IPAC S                                           │        567 │    99.82 │ true              │
+│ WILLIAMS RUSH ASSOCIATES                         │        655 │    74.66 │ false             │
+│ AMERASSIST A R SOLUTIONS                         │        575 │    58.78 │ false             │
+│ FIDELITY CAPITAL                                 │        589 │     58.4 │ false             │
+│ WESTCREEK FINANCIAL                              │       1261 │    39.97 │ false             │
+│ CONDUENT                                         │       2371 │    38.38 │ false             │
+│ CAPITAL ACCOUNTS                                 │       1477 │    38.25 │ false             │
+│ PHOENIX RECOVERY                                 │        633 │    37.28 │ false             │
+└──────────────────────────────────────────────────┴────────────┴──────────┴───────────────────┘
+  10 rows                                                                            4 columns
+
+(2 ms)
+====================================================================================================
+[10] DRILL 9a. Day 3's slowest question Q8 (133 s in Postgres) from SILVER.
+┌───────────────┬────────────┬─────────────┬──────────┐
+│ submitted_via │ complaints │ median_days │ p95_days │
+│    varchar    │   int64    │   double    │  double  │
+├───────────────┼────────────┼─────────────┼──────────┤
+│ Web           │   17553602 │         0.0 │      0.0 │
+│ Referral      │     279427 │         2.0 │     19.0 │
+│ Phone         │     221702 │         0.0 │     17.0 │
+│ Postal mail   │     110889 │         0.0 │     25.0 │
+│ Fax           │      25644 │         0.0 │     14.0 │
+│ Email         │        423 │         1.0 │     29.0 │
+└───────────────┴────────────┴─────────────┴──────────┘
+
+(446 ms)
+====================================================================================================
+[11] DRILL 9b. The same question from GOLD.
+┌───────────────┬────────────┬─────────────┬──────────┐
+│ submitted_via │ complaints │ median_days │ p95_days │
+│    varchar    │   int64    │   double    │  double  │
+├───────────────┼────────────┼─────────────┼──────────┤
+│ Web           │   17553602 │         0.0 │      0.0 │
+│ Referral      │     279427 │         2.0 │     19.0 │
+│ Phone         │     221702 │         0.0 │     17.0 │
+│ Postal mail   │     110889 │         0.0 │     25.0 │
+│ Fax           │      25644 │         0.0 │     14.0 │
+│ Email         │        423 │         1.0 │     29.0 │
+└───────────────┴────────────┴─────────────┴──────────┘
+
+(2 ms)
+====================================================================================================
+[12] DRILL 10. Data-quality flags are kept as columns, not deleted: how many rows carry each flag?
+┌──────────────────────┬───────────────┬─────────────┬──────────┐
+│ sent_before_received │ invalid_state │ future_date │ all_rows │
+│        int64         │     int64     │    int64    │  int64   │
+├──────────────────────┼───────────────┼─────────────┼──────────┤
+│                 7050 │          1528 │           0 │ 18191687 │
+└──────────────────────┴───────────────┴─────────────┴──────────┘
+
+(11 ms)

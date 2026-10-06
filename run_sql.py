@@ -4,6 +4,7 @@ Usage (from the project root):
     python run_sql.py sql/analysis.sql          # run all queries
     python run_sql.py sql/analysis.sql 3        # run only query number 3
     python run_sql.py sql/drills.sql --rows 30  # show more rows per result
+    python run_sql.py some.sql --db data/warehouse.duckdb   # use another database file
 
 Statements are separated by a semicolon at the end of a line.
 The comment lines above each query are printed as its title.
@@ -36,12 +37,13 @@ def main() -> None:
     ap.add_argument("sql_file")
     ap.add_argument("only", nargs="?", type=int, help="run only this query number (1-based)")
     ap.add_argument("--rows", type=int, default=15, help="rows to display per result")
+    ap.add_argument("--db", default=DB, help="DuckDB file (default: data/complaints.duckdb)")
     args = ap.parse_args()
 
     with open(args.sql_file, encoding="utf-8") as f:
         statements = split_statements(f.read())
 
-    con = duckdb.connect(DB)
+    con = duckdb.connect(args.db)
     for i, stmt in enumerate(statements, start=1):
         if args.only and i != args.only:
             continue
