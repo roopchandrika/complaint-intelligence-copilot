@@ -1,0 +1,73 @@
+// Day 5 star schema. Paste into https://dbdiagram.io, then Export > PNG to docs/star_schema.png
+// GRAIN of fact_complaints: one row per CFPB complaint.
+
+Table star.fact_complaints {
+  complaint_id bigint [note: 'degenerate dimension; grain = one row per complaint']
+  date_received_key int
+  date_sent_key int
+  company_key int
+  product_key int
+  issue_key int
+  state_key int
+  response_key int
+  complaint_count smallint [note: 'always 1, additive']
+  days_to_send int
+  is_timely smallint [note: '1/0/NULL']
+  is_disputed smallint [note: '1/0/NULL (not collected)']
+  has_narrative smallint
+}
+
+Table star.dim_date {
+  date_key int [pk, note: 'YYYYMMDD, -1 = unknown']
+  full_date date
+  year smallint
+  quarter smallint
+  month smallint
+  month_name varchar
+  year_month varchar
+  day_of_week smallint
+  day_name varchar
+  is_weekend boolean
+}
+
+Table star.dim_company {
+  company_key int [pk]
+  company_name_raw varchar
+  company_name_clean varchar
+}
+
+Table star.dim_product {
+  product_key int [pk]
+  product varchar
+  sub_product varchar
+  product_group varchar [note: 'stable across CFPB renames']
+}
+
+Table star.dim_issue {
+  issue_key int [pk]
+  issue varchar
+  sub_issue varchar
+}
+
+Table star.dim_state {
+  state_key int [pk]
+  state_code varchar
+  state_name varchar
+  region varchar
+}
+
+Table star.dim_response {
+  response_key int [pk, note: 'junk dimension']
+  submitted_via varchar
+  company_response varchar
+  timely_response varchar
+  consumer_disputed varchar
+}
+
+Ref: star.fact_complaints.date_received_key > star.dim_date.date_key
+Ref: star.fact_complaints.date_sent_key > star.dim_date.date_key
+Ref: star.fact_complaints.company_key > star.dim_company.company_key
+Ref: star.fact_complaints.product_key > star.dim_product.product_key
+Ref: star.fact_complaints.issue_key > star.dim_issue.issue_key
+Ref: star.fact_complaints.state_key > star.dim_state.state_key
+Ref: star.fact_complaints.response_key > star.dim_response.response_key

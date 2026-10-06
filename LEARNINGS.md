@@ -212,3 +212,53 @@
   and columns, sys.foreign_keys for how tables join.
 - SOAP services describe themselves in a WSDL file. Zeep reads it, builds the XML request,
   and turns the XML answer into Python objects I can save as JSON.
+
+## Day 5 — Data modeling: star schema, facts, dimensions, grain (2026-10-06)
+
+### What I built
+- sql/star_schema.sql: a star schema in its own "star" schema in DuckDB.
+  Grain: one row per CFPB complaint in fact_complaints.
+- 6 dimensions: dim_date (used twice: received and sent), dim_company, dim_product,
+  dim_issue, dim_state (with US Census regions), dim_response (small flags grouped together).
+- sql/star_load.sql: fills the dimensions first, then the fact table. Every dimension has
+  a surrogate key, and key -1 means "Unknown".
+- sql/star_validate.sql: 6 checks that the star matches the raw data.
+- sql/star_queries.sql: 4 business questions and 4 drills.
+- docs/star_schema.png: the diagram.
+
+### Problems I hit and how I fixed them
+- My first version loaded every complaint with an "Unknown" state because the state
+  lookup table failed to build. The missing-link check still passed (-1 exists in the
+  dimension). Only counting the Unknown rows showed it.
+  Lesson: validation needs more than one kind of check.
+- PowerShell saved my query output with broken characters (ΓöîΓöÇ instead of lines).
+  Fix: set the console to UTF-8 before using Out-File.
+
+### Numbers
+- Fact table: 18,191,687 rows, one per complaint. Totals match the raw table exactly.
+- Complaints with an unknown state: 64,601 (0.36%).
+- CFPB renamed its products on 2017-04-24 and 2023-08-24. Three different names for
+  credit reporting now roll up into one product_group.
+- Credit reporting complaints: 307,538 in 2021 → 4,810,298 in 2025 (about 15x).
+- Weekdays get about 2-3 times more complaints than Sundays (Tuesday 984,456 vs Sunday 303,578).
+- Complaints received in December 2025 were sent to companies as late as July 2026.
+- Averaging trap: average of 3,968 company percentages = 74.22%,
+  real overall timely rate = 99.55%.
+- Fan-out: a join on a non-unique name turned 18,191,687 complaints into 72,337,774.
+
+### What I learned
+- Decide the grain first. "One row = one complaint" tells me which columns belong in the
+  fact table and makes the totals checkable.
+- Facts hold numbers I add up. Dimensions hold words I filter and group by.
+- Surrogate keys (numbers I assign) keep the warehouse stable when source names change,
+  and an "Unknown" row (-1) keeps complaints with missing values in the totals.
+- One date table can play two roles (received and sent) by joining it twice.
+- Never average percentages. Add up the parts (timely, answered) first, then divide once.
+- A join on a column that is not unique multiplies rows silently. Check uniqueness of every
+  dimension's key before joining.
+- A star schema makes questions simple: each question is the fact table plus one join per
+  description I need. That also makes it easier for an AI to write correct SQL later.
+- A product_group column solved the CFPB renaming problem from Day 2 without changing
+  the original values.
+- Type 2 history keeps old versions of a row with valid-from and valid-to dates, so old
+  complaints show the company name that was correct at the time.
