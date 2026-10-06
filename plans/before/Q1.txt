@@ -1,0 +1,36 @@
+-- Q1. Business question: How many complaints does each product receive per month?
+SELECT product,
+       date_trunc('month', date_received) AS month,
+       count(*)                           AS complaints
+FROM complaints
+GROUP BY 1, 2
+ORDER BY month DESC, complaints DESC
+
+Sort  (cost=876073.76..876256.61 rows=73140 width=64) (actual time=26637.301..26689.191 rows=1700 loops=1)
+  Sort Key: (date_trunc('month'::text, (date_received)::timestamp with time zone)) DESC, (count(*)) DESC
+  Sort Method: quicksort  Memory: 162kB
+  Buffers: shared hit=100021 read=633171
+  ->  Finalize HashAggregate  (cost=869067.55..870164.65 rows=73140 width=64) (actual time=26631.560..26685.737 rows=1700 loops=1)
+        Group Key: product, (date_trunc('month'::text, (date_received)::timestamp with time zone))
+        Batches: 1  Memory Usage: 3345kB
+        Buffers: shared hit=100021 read=633171
+        ->  Gather  (cost=836520.24..866873.34 rows=292560 width=64) (actual time=26592.315..26658.740 rows=7926 loops=1)
+              Workers Planned: 4
+              Workers Launched: 4
+              Buffers: shared hit=100021 read=633171
+              ->  Partial HashAggregate  (cost=835520.24..836617.34 rows=73140 width=64) (actual time=26155.309..26161.297 rows=1585 loops=5)
+                    Group Key: product, date_trunc('month'::text, (date_received)::timestamp with time zone)
+                    Batches: 1  Memory Usage: 3345kB
+                    Buffers: shared hit=100021 read=633171
+                    Worker 0:  Batches: 1  Memory Usage: 3345kB
+                    Worker 1:  Batches: 1  Memory Usage: 3345kB
+                    Worker 2:  Batches: 1  Memory Usage: 3345kB
+                    Worker 3:  Batches: 1  Memory Usage: 3345kB
+                    ->  Parallel Seq Scan on complaints  (cost=0.00..801410.83 rows=4547922 width=56) (actual time=432.857..24488.115 rows=3638337 loops=5)
+                          Buffers: shared hit=100021 read=633171
+Planning Time: 4.977 ms
+JIT:
+  Functions: 34
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 32.762 ms, Inlining 1280.034 ms, Optimization 537.156 ms, Emission 355.331 ms, Total 2205.283 ms
+Execution Time: 26713.672 ms

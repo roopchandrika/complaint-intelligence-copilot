@@ -1,0 +1,37 @@
+-- Q4. Business question: What is the running total of complaints per product during 2025?
+WITH daily AS (
+    SELECT product, date_received AS d, count(*) AS n
+    FROM complaints
+    WHERE date_received >= DATE '2025-01-01' AND date_received < DATE '2026-01-01'
+    GROUP BY 1, 2
+)
+SELECT product, d, n,
+       sum(n) OVER (PARTITION BY product ORDER BY d
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM daily
+ORDER BY product, d
+
+WindowAgg  (cost=1000.62..311886.45 rows=69160 width=92) (actual time=188.751..541.282 rows=4015 loops=1)
+  Buffers: shared hit=17267
+  ->  Finalize GroupAggregate  (cost=1000.62..310676.15 rows=69160 width=60) (actual time=187.892..537.504 rows=4015 loops=1)
+        Group Key: complaints.product, complaints.date_received
+        Buffers: shared hit=17267
+        ->  Gather Merge  (cost=1000.62..307909.75 rows=276640 width=60) (actual time=187.751..535.676 rows=5434 loops=1)
+              Workers Planned: 4
+              Workers Launched: 4
+              Buffers: shared hit=17267
+              ->  Partial GroupAggregate  (cost=0.56..273959.20 rows=69160 width=60) (actual time=8.895..381.460 rows=1087 loops=5)
+                    Group Key: complaints.product, complaints.date_received
+                    Buffers: shared hit=17267
+                    ->  Parallel Index Only Scan using idx_complaints_product_date on complaints  (cost=0.56..263034.55 rows=1364407 width=52) (actual time=0.180..228.049 rows=1088591 loops=5)
+                          Index Cond: ((date_received >= '2025-01-01'::date) AND (date_received < '2026-01-01'::date))
+                          Heap Fetches: 0
+                          Buffers: shared hit=17267
+Planning:
+  Buffers: shared hit=1
+Planning Time: 1.063 ms
+JIT:
+  Functions: 29
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 3.628 ms, Inlining 0.000 ms, Optimization 1.930 ms, Emission 40.815 ms, Total 46.373 ms
+Execution Time: 543.565 ms

@@ -1,0 +1,40 @@
+-- P2. Business question (API lookup): What were Wells Fargo's top issues in 2025?
+SELECT issue, count(*) AS n
+FROM complaints
+WHERE company = 'WELLS FARGO & COMPANY'
+  AND date_received >= DATE '2025-01-01' AND date_received < DATE '2026-01-01'
+GROUP BY issue
+ORDER BY n DESC
+
+Sort  (cost=814908.89..814909.23 rows=137 width=47) (actual time=1666.917..1685.990 rows=72 loops=1)
+  Sort Key: (count(*)) DESC
+  Sort Method: quicksort  Memory: 29kB
+  Buffers: shared hit=106969 read=626451
+  ->  Finalize GroupAggregate  (cost=814729.76..814904.03 rows=137 width=47) (actual time=1665.708..1685.952 rows=72 loops=1)
+        Group Key: issue
+        Buffers: shared hit=106969 read=626451
+        ->  Gather Merge  (cost=814729.76..814899.92 rows=548 width=47) (actual time=1665.649..1685.751 rows=306 loops=1)
+              Workers Planned: 4
+              Workers Launched: 4
+              Buffers: shared hit=106969 read=626451
+              ->  Partial GroupAggregate  (cost=813729.70..813834.59 rows=137 width=47) (actual time=1637.543..1638.187 rows=61 loops=5)
+                    Group Key: issue
+                    Buffers: shared hit=106969 read=626451
+                    ->  Sort  (cost=813729.70..813764.21 rows=13802 width=39) (actual time=1637.483..1637.722 rows=3894 loops=5)
+                          Sort Key: issue
+                          Sort Method: quicksort  Memory: 268kB
+                          Buffers: shared hit=106969 read=626451
+                          Worker 0:  Sort Method: quicksort  Memory: 271kB
+                          Worker 1:  Sort Method: quicksort  Memory: 266kB
+                          Worker 2:  Sort Method: quicksort  Memory: 253kB
+                          Worker 3:  Sort Method: quicksort  Memory: 254kB
+                          ->  Parallel Seq Scan on complaints  (cost=0.00..812780.64 rows=13802 width=39) (actual time=825.439..1634.521 rows=3894 loops=5)
+                                Filter: ((date_received >= '2025-01-01'::date) AND (date_received < '2026-01-01'::date) AND (company = 'WELLS FARGO & COMPANY'::text))
+                                Rows Removed by Filter: 3634444
+                                Buffers: shared hit=106741 read=626451
+Planning Time: 0.130 ms
+JIT:
+  Functions: 43
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 5.349 ms, Inlining 551.514 ms, Optimization 396.881 ms, Emission 286.122 ms, Total 1239.867 ms
+Execution Time: 1687.084 ms

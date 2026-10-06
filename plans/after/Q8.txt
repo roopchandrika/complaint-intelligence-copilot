@@ -1,0 +1,29 @@
+-- Q8. Business question: How many days does the CFPB take to forward complaints, by channel?
+SELECT submitted_via,
+       count(*)                                                                         AS n,
+       round(avg(date_sent_to_company - date_received), 2)                              AS avg_days,
+       percentile_cont(0.5)  WITHIN GROUP (ORDER BY date_sent_to_company - date_received) AS median_days,
+       percentile_cont(0.95) WITHIN GROUP (ORDER BY date_sent_to_company - date_received) AS p95_days
+FROM complaints
+GROUP BY submitted_via
+ORDER BY n DESC
+
+Sort  (cost=3783637.44..3783637.45 rows=6 width=60) (actual time=78925.777..78926.476 rows=6 loops=1)
+  Sort Key: (count(*)) DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=114191 read=618950, temp read=133616 written=118182
+  ->  GroupAggregate  (cost=3419777.40..3783637.36 rows=6 width=60) (actual time=68933.246..78925.612 rows=6 loops=1)
+        Group Key: submitted_via
+        Buffers: shared hit=114191 read=618950, temp read=133616 written=118182
+        ->  Sort  (cost=3419777.40..3465259.88 rows=18192992 width=12) (actual time=68926.352..71805.643 rows=18191687 loops=1)
+              Sort Key: submitted_via
+              Sort Method: external merge  Disk: 395584kB
+              Buffers: shared hit=114191 read=618950, temp read=49448 written=49466
+              ->  Seq Scan on complaints  (cost=0.00..915070.92 rows=18192992 width=12) (actual time=569.098..63671.638 rows=18191687 loops=1)
+                    Buffers: shared hit=114191 read=618950
+Planning Time: 13.305 ms
+JIT:
+  Functions: 9
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 54.707 ms, Inlining 125.024 ms, Optimization 217.812 ms, Emission 200.847 ms, Total 598.389 ms
+Execution Time: 79091.464 ms

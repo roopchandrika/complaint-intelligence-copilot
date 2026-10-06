@@ -1,0 +1,230 @@
+﻿====================================================================================================
+[1] DRILL 1a. EXPLAIN shows the PLAN only (estimates). The query is not run.
+   Finalize Aggregate  (cost=791035.91..791035.92 rows=1 width=8)
+     ->  Gather  (cost=791035.49..791035.90 rows=4 width=8)
+           Workers Planned: 4
+           ->  Partial Aggregate  (cost=790035.49..790035.50 rows=1 width=8)
+                 ->  Parallel Seq Scan on complaints  (cost=0.00..790030.19 rows=2122 width=0)
+                       Filter: (state = 'WY'::text)
+   JIT:
+     Functions: 6
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+(190 ms)
+====================================================================================================
+[2] DRILL 1b. EXPLAIN ANALYZE runs the query and adds ACTUAL rows and times. Compare "rows=" estimated vs actual.
+   Finalize Aggregate  (cost=791035.91..791035.92 rows=1 width=8) (actual time=20739.944..20896.158 rows=1 loops=1)
+     Buffers: shared hit=2240 read=730952
+     ->  Gather  (cost=791035.49..791035.90 rows=4 width=8) (actual time=20726.712..20895.288 rows=5 loops=1)
+           Workers Planned: 4
+           Workers Launched: 4
+           Buffers: shared hit=2240 read=730952
+           ->  Partial Aggregate  (cost=790035.49..790035.50 rows=1 width=8) (actual time=20691.762..20691.855 rows=1 loops=5)
+                 Buffers: shared hit=2240 read=730952
+                 ->  Parallel Seq Scan on complaints  (cost=0.00..790030.19 rows=2122 width=0) (actual time=362.790..20682.560 rows=1222 loops=5)
+                       Filter: (state = 'WY'::text)
+                       Rows Removed by Filter: 3637115
+                       Buffers: shared hit=2240 read=730952
+   Planning Time: 0.081 ms
+   JIT:
+     Functions: 22
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 5.130 ms, Inlining 791.957 ms, Optimization 434.848 ms, Emission 410.758 ms, Total 1642.693 ms
+   Execution Time: 20901.717 ms
+(20,950 ms)
+====================================================================================================
+[3] DRILL 2. The statistics the planner uses for its estimates (collected by ANALYZE).
+   column_name | null_frac | n_distinct | top_values | top_value_fractions
+   product | 0.0 | 20.0 | ['Credit reporting or other personal consumer reports', 'Credit reporting, credit repair services, or other personal consumer reports', 'Debt collection', 'Mortgage', 'Checking or savings account'] | [0.6895667, 0.119566664, 0.067033336, 0.025633333, 0.022866666]
+   state | 0.0034 | 58.0 | ['FL', 'TX', 'CA', 'GA', 'NY'] | [0.13836667, 0.13493334, 0.09696667, 0.07446667, 0.0593]
+   submitted_via | 0.0 | 5.0 | ['Web', 'Referral', 'Phone', 'Postal mail', 'Fax'] | [0.96426666, 0.015766667, 0.012033333, 0.0062666666, 0.0016666667]
+   timely_response | 0.0 | 2.0 | ['Yes', 'No'] | [0.9945, 0.0055]
+(129 ms)
+====================================================================================================
+[4] DRILL 3a. Selectivity: create an index on a Yes/No column.
+(42,655 ms)
+====================================================================================================
+[5] DRILL 3b. 'Yes' matches almost every row: the planner IGNORES the index (Seq Scan) - and it is right to.
+   Aggregate  (cost=3610662.61..3610662.62 rows=1 width=8) (actual time=27440.390..27489.360 rows=1 loops=1)
+     ->  Gather Merge  (cost=1399238.36..3565433.53 rows=18091633 width=28) (actual time=19446.472..25765.093 rows=18081188 loops=1)
+           Workers Planned: 4
+           Workers Launched: 4
+           ->  Sort  (cost=1398238.30..1409545.57 rows=4522908 width=28) (actual time=19255.425..19945.381 rows=3616238 loops=5)
+                 Sort Key: company
+                 Sort Method: external merge  Disk: 115224kB
+                 Worker 0:  Sort Method: external merge  Disk: 112000kB
+                 Worker 1:  Sort Method: external merge  Disk: 116952kB
+                 Worker 2:  Sort Method: external merge  Disk: 117000kB
+                 Worker 3:  Sort Method: external merge  Disk: 116608kB
+                 ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=4522908 width=28) (actual time=261.223..14847.395 rows=3616238 loops=5)
+                       Filter: (timely_response = 'Yes'::text)
+                       Rows Removed by Filter: 22100
+   Planning Time: 6.241 ms
+   JIT:
+     Functions: 22
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 14.398 ms, Inlining 422.978 ms, Optimization 479.805 ms, Emission 398.973 ms, Total 1316.154 ms
+   Execution Time: 27523.189 ms
+(27,563 ms)
+====================================================================================================
+[6] DRILL 3c. 'No' matches few rows: now the index is worth using (Index Scan, or Bitmap Index Scan + Bitmap Heap Scan).
+   Aggregate  (cost=26757.76..26757.77 rows=1 width=8) (actual time=8891.351..8891.354 rows=1 loops=1)
+     ->  Sort  (cost=26257.49..26507.62 rows=100054 width=28) (actual time=8866.561..8871.509 rows=110499 loops=1)
+           Sort Key: company
+           Sort Method: quicksort  Memory: 7076kB
+           ->  Index Scan using drill_idx_timely on complaints  (cost=0.44..17947.80 rows=100054 width=28) (actual time=0.569..8733.732 rows=110499 loops=1)
+                 Index Cond: (timely_response = 'No'::text)
+   Planning Time: 1.911 ms
+   Execution Time: 8892.221 ms
+(8,905 ms)
+====================================================================================================
+[7] DRILL 3d. A partial index stores ONLY the rare rows. Compare its size with the full index.
+(33,633 ms)
+====================================================================================================
+[8] DRILL 3e. Index sizes: full index on every row vs partial index on late rows only.
+   index_name | size
+   drill_idx_timely | 120 MB
+   drill_idx_late_company | 1008 kB
+(111 ms)
+====================================================================================================
+[9] DRILL 3f. The partial index answers "late responses for one company" directly.
+   Aggregate  (cost=670.38..670.39 rows=1 width=8) (actual time=0.714..0.716 rows=1 loops=1)
+     ->  Index Only Scan using drill_idx_late_company on complaints  (cost=0.29..603.10 rows=26911 width=0) (actual time=0.394..0.560 rows=1774 loops=1)
+           Index Cond: (company = 'EQUIFAX, INC.'::text)
+           Heap Fetches: 0
+   Planning Time: 1.938 ms
+   Execution Time: 1.252 ms
+(12 ms)
+====================================================================================================
+[10] DRILL 3g. Clean up the drill indexes.
+(99 ms)
+====================================================================================================
+[11] DROP INDEX drill_idx_late_company
+(8 ms)
+====================================================================================================
+[12] DRILL 4a. Leftmost-prefix rule: a composite index on (state, product).
+(77,883 ms)
+====================================================================================================
+[13] DRILL 4b. Filter on the FIRST column: the index is used.
+   Aggregate  (cost=31293.82..31293.83 rows=1 width=12) (actual time=1275.904..1275.906 rows=1 loops=1)
+     ->  Bitmap Heap Scan on complaints  (cost=98.35..31251.38 rows=8489 width=4) (actual time=7.456..1270.581 rows=6110 loops=1)
+           Recheck Cond: (state = 'WY'::text)
+           Heap Blocks: exact=5495
+           ->  Bitmap Index Scan on drill_idx_state_product  (cost=0.00..96.23 rows=8489 width=0) (actual time=4.348..4.349 rows=6110 loops=1)
+                 Index Cond: (state = 'WY'::text)
+   Planning Time: 20.131 ms
+   Execution Time: 1278.454 ms
+(1,344 ms)
+====================================================================================================
+[14] DRILL 4c. Filter on BOTH columns: the index is used even more precisely.
+   Aggregate  (cost=880.11..880.12 rows=1 width=12) (actual time=0.705..0.706 rows=1 loops=1)
+     ->  Index Scan using drill_idx_state_product on complaints  (cost=0.56..879.02 rows=218 width=4) (actual time=0.055..0.670 rows=430 loops=1)
+           Index Cond: ((state = 'WY'::text) AND (product = 'Mortgage'::text))
+   Planning Time: 0.115 ms
+   Execution Time: 0.729 ms
+(44 ms)
+====================================================================================================
+[15] DRILL 4d. Filter on the SECOND column only: the index cannot be searched directly (expect a Seq Scan).
+   Finalize Aggregate  (cost=791624.35..791624.36 rows=1 width=12) (actual time=30176.837..30332.877 rows=1 loops=1)
+     ->  Gather  (cost=791623.92..791624.33 rows=4 width=12) (actual time=30166.969..30332.090 rows=5 loops=1)
+           Workers Planned: 4
+           Workers Launched: 4
+           ->  Partial Aggregate  (cost=790623.92..790623.93 rows=1 width=12) (actual time=29905.876..29905.903 rows=1 loops=5)
+                 ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=116578 width=4) (actual time=332.533..29855.580 rows=92417 loops=5)
+                       Filter: (product = 'Mortgage'::text)
+                       Rows Removed by Filter: 3545920
+   Planning Time: 1.102 ms
+   JIT:
+     Functions: 27
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 80.296 ms, Inlining 669.192 ms, Optimization 399.187 ms, Emission 605.260 ms, Total 1753.936 ms
+   Execution Time: 30411.926 ms
+(30,446 ms)
+====================================================================================================
+[16] DRILL 5. Index Only Scan: every column the query needs is in the index, so the table itself is never read.
+   GroupAggregate  (cost=0.56..227.76 rows=20 width=56) (actual time=2.225..8.042 rows=20 loops=1)
+     Group Key: product
+     Buffers: shared hit=277
+     ->  Index Only Scan using drill_idx_state_product on complaints  (cost=0.56..185.12 rows=8489 width=48) (actual time=1.498..6.165 rows=6110 loops=1)
+           Index Cond: (state = 'WY'::text)
+           Heap Fetches: 0
+           Buffers: shared hit=277
+   Planning Time: 8.668 ms
+   Execution Time: 9.214 ms
+(41 ms)
+====================================================================================================
+[17] DRILL 5b. Clean up.
+(234 ms)
+====================================================================================================
+[18] DRILL 6a. Join algorithms: a small lookup table of regions.
+(61 ms)
+====================================================================================================
+[19] DRILL 6b. Small table joined to a big one: expect a Hash Join (hash the small side, scan the big side).
+   HashAggregate  (cost=4158272.78..4158274.78 rows=200 width=40) (actual time=82435.396..82435.516 rows=4 loops=1)
+     Group Key: r.region
+     Batches: 1  Memory Usage: 40kB
+     ->  Hash Join  (cost=29.80..3759416.38 rows=79771280 width=32) (actual time=444.680..79845.788 rows=11238219 loops=1)
+           Hash Cond: (c.state = r.state)
+           ->  Seq Scan on complaints c  (cost=0.00..915108.88 rows=18191688 width=3) (actual time=0.051..68880.837 rows=18191687 loops=1)
+           ->  Hash  (cost=18.80..18.80 rows=880 width=64) (actual time=444.159..444.188 rows=10 loops=1)
+                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                 ->  Seq Scan on region_lookup r  (cost=0.00..18.80 rows=880 width=64) (actual time=444.059..444.071 rows=10 loops=1)
+   Planning Time: 6.350 ms
+   JIT:
+     Functions: 14
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 13.207 ms, Inlining 55.791 ms, Optimization 216.181 ms, Emission 173.669 ms, Total 458.848 ms
+   Execution Time: 82452.757 ms
+(82,462 ms)
+====================================================================================================
+[20] DRILL 7a. Memory and sorting: with very little work_mem, a big sort spills to disk.
+(11 ms)
+====================================================================================================
+[21] DRILL 7b. Look for "Sort Method: external merge  Disk: ...kB" (slow: the sort used temporary files).
+   Gather Merge  (cost=866818.65..1160726.96 rows=2454664 width=36) (actual time=32970.218..34523.903 rows=2517125 loops=1)
+     Workers Planned: 4
+     Workers Launched: 4
+     ->  Sort  (cost=865818.59..867352.76 rows=613666 width=36) (actual time=32687.613..32899.819 rows=503425 loops=5)
+           Sort Key: company
+           Sort Method: external merge  Disk: 23312kB
+           Worker 0:  Sort Method: external merge  Disk: 21640kB
+           Worker 1:  Sort Method: external merge  Disk: 23040kB
+           Worker 2:  Sort Method: external merge  Disk: 22384kB
+           Worker 3:  Sort Method: external merge  Disk: 25296kB
+           ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=613666 width=36) (actual time=415.084..30940.202 rows=503425 loops=5)
+                 Filter: (state = 'TX'::text)
+                 Rows Removed by Filter: 3134912
+   Planning Time: 3.658 ms
+   JIT:
+     Functions: 20
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 23.244 ms, Inlining 1205.051 ms, Optimization 505.037 ms, Emission 362.631 ms, Total 2095.963 ms
+   Execution Time: 34699.604 ms
+(34,745 ms)
+====================================================================================================
+[22] DRILL 7c. More memory for this session.
+(9 ms)
+====================================================================================================
+[23] DRILL 7d. Now look for "Sort Method: quicksort  Memory: ...kB" (the sort fits in memory).
+   Gather Merge  (cost=850036.15..1143944.46 rows=2454664 width=36) (actual time=31187.974..32164.433 rows=2517125 loops=1)
+     Workers Planned: 4
+     Workers Launched: 4
+     ->  Sort  (cost=849036.09..850570.26 rows=613666 width=36) (actual time=30884.827..30970.361 rows=503425 loops=5)
+           Sort Key: company
+           Sort Method: quicksort  Memory: 41838kB
+           Worker 0:  Sort Method: quicksort  Memory: 42835kB
+           Worker 1:  Sort Method: quicksort  Memory: 43426kB
+           Worker 2:  Sort Method: quicksort  Memory: 57895kB
+           Worker 3:  Sort Method: quicksort  Memory: 43356kB
+           ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=613666 width=36) (actual time=382.036..28274.984 rows=503425 loops=5)
+                 Filter: (state = 'TX'::text)
+                 Rows Removed by Filter: 3134912
+   Planning Time: 2.054 ms
+   JIT:
+     Functions: 20
+     Options: Inlining true, Optimization true, Expressions true, Deforming true
+     Timing: Generation 26.546 ms, Inlining 837.558 ms, Optimization 618.541 ms, Emission 452.684 ms, Total 1935.329 ms
+   Execution Time: 32342.247 ms
+(32,381 ms)
+====================================================================================================
+[24] DRILL 7e. Back to the server default.
+(9 ms)

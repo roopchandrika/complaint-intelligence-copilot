@@ -1,0 +1,8 @@
+-- P1. Business question (API lookup): What is the full record for one complaint?
+SELECT * FROM complaints WHERE complaint_id = 12278890
+
+Index Scan using idx_complaints_id on complaints  (cost=0.44..8.46 rows=1 width=435) (actual time=0.017..0.018 rows=1 loops=1)
+  Index Cond: (complaint_id = 12278890)
+  Buffers: shared hit=4
+Planning Time: 0.330 ms
+Execution Time: 0.031 ms

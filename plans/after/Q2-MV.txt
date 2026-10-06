@@ -1,0 +1,26 @@
+-- Q2-MV. Same question as Q2, answered from the pre-aggregated materialized view (exists only after fixes.sql)
+WITH monthly AS (
+    SELECT product, month, n FROM mv_monthly_product
+)
+SELECT product, month, n,
+       LAG(n) OVER w                                           AS prev_n,
+       n - LAG(n) OVER w                                       AS mom_change,
+       round(100.0 * (n - LAG(n) OVER w) / NULLIF(LAG(n) OVER w, 0), 1) AS mom_pct
+FROM monthly
+WINDOW w AS (PARTITION BY product ORDER BY month)
+ORDER BY month DESC, n DESC
+
+Sort  (cost=283.43..287.68 rows=1700 width=88) (actual time=4.172..4.253 rows=1700 loops=1)
+  Sort Key: mv_monthly_product.month DESC, mv_monthly_product.n DESC
+  Sort Method: quicksort  Memory: 201kB
+  Buffers: shared hit=16
+  ->  WindowAgg  (cost=124.22..192.22 rows=1700 width=88) (actual time=1.746..3.528 rows=1700 loops=1)
+        Buffers: shared hit=16
+        ->  Sort  (cost=124.22..128.47 rows=1700 width=40) (actual time=1.731..1.823 rows=1700 loops=1)
+              Sort Key: mv_monthly_product.product, mv_monthly_product.month
+              Sort Method: quicksort  Memory: 162kB
+              Buffers: shared hit=16
+              ->  Seq Scan on mv_monthly_product  (cost=0.00..33.00 rows=1700 width=40) (actual time=0.009..0.138 rows=1700 loops=1)
+                    Buffers: shared hit=16
+Planning Time: 0.112 ms
+Execution Time: 4.353 ms

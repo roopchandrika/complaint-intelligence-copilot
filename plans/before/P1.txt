@@ -1,0 +1,17 @@
+-- P1. Business question (API lookup): What is the full record for one complaint?
+SELECT * FROM complaints WHERE complaint_id = 12278890
+
+Gather  (cost=1000.00..791041.12 rows=1 width=436) (actual time=18614.820..18671.567 rows=1 loops=1)
+  Workers Planned: 4
+  Workers Launched: 4
+  Buffers: shared hit=105941 read=627251
+  ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=1 width=436) (actual time=15871.123..18186.355 rows=0 loops=5)
+        Filter: (complaint_id = 12278890)
+        Rows Removed by Filter: 3638337
+        Buffers: shared hit=105941 read=627251
+Planning Time: 13.326 ms
+JIT:
+  Functions: 10
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 71.662 ms, Inlining 2203.481 ms, Optimization 996.396 ms, Emission 867.444 ms, Total 4138.983 ms
+Execution Time: 18726.831 ms

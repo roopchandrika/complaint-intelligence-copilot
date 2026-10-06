@@ -90,3 +90,71 @@
   Likely a data quirk; needs checking before reporting.
 - "State" has 63 values, including territories and military codes, not just 50 states + DC.
 - The narrative column is missing from my file; it is needed for RAG on Day 22.
+
+## Day 3 — Query performance: EXPLAIN ANALYZE, indexes, scans vs seeks (2026-10-06)
+
+### What I built
+- docker-compose.yml: Postgres 16 in Docker.
+- data/load_postgres.py: copies the 18M-row complaints table from DuckDB into Postgres.
+- perf.py: times every query (median of 3 warm runs), saves each query plan,
+  and builds a before/after table.
+- sql/pg/perf_queries.sql: my 8 Day 2 queries in Postgres SQL, plus 4 lookup queries.
+- sql/pg/fixes.sql: 4 indexes and 1 materialized view.
+- sql/pg/drills.sql: exercises on plans, statistics, selectivity, index order,
+  index-only scans, join types and sorting memory.
+- PERF.md: before/after results with explanations.
+
+### Problems I hit and how I fixed them
+- `docker compose up` failed: a container named "pg" already existed from an earlier setup.
+  Fix: removed the old container with `docker rm -f pg`.
+- The loader failed with "password authentication failed for user postgres".
+  Cause: a Postgres installed on Windows was already using port 5432, so my connection
+  reached it instead of the Docker database.
+  Fix: moved Docker Postgres to port 5433.
+- VACUUM failed with "No space left on device". It was not the disk: the container
+  has only 1 GB of shared memory, and VACUUM's parallel workers asked for 1 GB.
+  Fix: lowered maintenance_work_mem to 256MB before running VACUUM.
+- Two forgotten Airflow containers from an old project were running and set to restart
+  automatically, taking memory during benchmarks.
+  Fix: stopped them and turned off auto-restart (`docker update --restart=no`).
+  Lesson: run `docker ps` before benchmarking.
+
+### Numbers
+- 18,191,687 rows in Postgres. The 4 indexes take 820 MB in total:
+  complaint_id 390 MB, (company, date) 176 MB, (product, date) 132 MB, date 122 MB.
+- Biggest wins (before → after):
+  - P1 one complaint by ID: 26,266 ms → 2.4 ms (unique index).
+  - Q2 month over month: 5,958 ms → 14 ms (materialized view, 431x faster).
+  - P3b complaints on one date: 1,107 ms → 2.9 ms (date index).
+  - Q7 mortgage 3-month average: 27,451 ms → 94 ms (product + date index, 292x faster).
+  - P2 Wells Fargo top issues in 2025: 4,505 ms → 34 ms (company + date index).
+- Same question, same index, different wording:
+  - `to_char(date_received, ...) = '2025-03-03'` → 2,424 ms.
+  - `date_received = DATE '2025-03-03'` → 2.9 ms (about 800x faster).
+- Got worse after the fixes:
+  - Q3 top issues for the top 10 companies: 12,073 ms → timed out after 10 minutes.
+  - Q5 late responders: 2,697 ms → 30,904 ms, with the same plan.
+- No real change: Q8 (159 s → 133 s), which calculates a median over all 18M rows.
+
+### What I learned
+- An index can make a query slower. For Q3 the planner used the (company, date) index to
+  fetch millions of rows for the biggest companies. Jumping around the disk for millions
+  of rows is far slower than reading the table once. Indexes are for finding a few rows.
+- Every index uses memory. 820 MB of new indexes left less room to keep the table in
+  memory, which likely made full-table queries like Q5 slower. An index can hurt queries
+  that never use it.
+- Postgres picks a plan using statistics. After loading data, run ANALYZE.
+- An index helps only when a query needs a small part of the table. For 'Yes' in
+  timely_response (most rows) Postgres ignored my index, and it was right to.
+- Column order matters in a two-column index: (state, product) helps state, or
+  state + product, but not product alone. Put "=" columns first, range columns last.
+- Wrapping a column in a function stops the index from being used.
+  Compare the bare column with a constant instead.
+- If an index holds every column a query needs, Postgres never reads the table
+  (Index Only Scan). That is why Q7 dropped to 94 ms.
+- For whole-table totals, pre-calculating (materialized view) beats any index.
+  Q3, Q5 and Q8 need pre-aggregated tables too: that is the Gold layer on Day 6.
+- Always measure after adding an index. Check the queries you did not target as well,
+  because they can get worse.
+- Environment issues (container names, ports, shared memory, forgotten containers)
+  caused as many problems as the SQL itself.

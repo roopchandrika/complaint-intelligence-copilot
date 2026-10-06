@@ -1,0 +1,45 @@
+-- Q6. Business question: What share of each month's complaints does each product represent?
+WITH monthly AS (
+    SELECT date_trunc('month', date_received) AS month, product, count(*) AS n
+    FROM complaints GROUP BY 1, 2
+)
+SELECT month, product, n,
+       round(100.0 * n / sum(n) OVER (PARTITION BY month), 2) AS pct_of_month
+FROM monthly
+ORDER BY month DESC, pct_of_month DESC
+
+Sort  (cost=306595.91..306768.81 rows=69160 width=96) (actual time=2591.804..2598.341 rows=1700 loops=1)
+  Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)) DESC, (round(((100.0 * ((count(*)))::numeric) / sum((count(*))) OVER (?)), 2)) DESC
+  Sort Method: quicksort  Memory: 175kB
+  Buffers: shared hit=124842
+  ->  WindowAgg  (cost=299134.35..301036.25 rows=69160 width=96) (actual time=2587.931..2596.386 rows=1700 loops=1)
+        Buffers: shared hit=124842
+        ->  Sort  (cost=299134.35..299307.25 rows=69160 width=64) (actual time=2587.849..2594.434 rows=1700 loops=1)
+              Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+              Sort Method: quicksort  Memory: 162kB
+              Buffers: shared hit=124842
+              ->  Finalize HashAggregate  (cost=292537.30..293574.70 rows=69160 width=64) (actual time=2586.285..2593.629 rows=1700 loops=1)
+                    Group Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)), complaints.product
+                    Batches: 1  Memory Usage: 3345kB
+                    Buffers: shared hit=124842
+                    ->  Gather  (cost=261761.10..290462.50 rows=276640 width=64) (actual time=2582.195..2589.999 rows=4506 loops=1)
+                          Workers Planned: 4
+                          Workers Launched: 4
+                          Buffers: shared hit=124842
+                          ->  Partial HashAggregate  (cost=260761.10..261798.50 rows=69160 width=64) (actual time=2548.012..2549.046 rows=901 loops=5)
+                                Group Key: date_trunc('month'::text, (complaints.date_received)::timestamp with time zone), complaints.product
+                                Batches: 1  Memory Usage: 3217kB
+                                Buffers: shared hit=124842
+                                Worker 0:  Batches: 1  Memory Usage: 3217kB
+                                Worker 1:  Batches: 1  Memory Usage: 3217kB
+                                Worker 2:  Batches: 1  Memory Usage: 3217kB
+                                Worker 3:  Batches: 1  Memory Usage: 3217kB
+                                ->  Parallel Index Only Scan using idx_complaints_product_date on complaints  (cost=0.56..226649.24 rows=4548248 width=56) (actual time=7.848..1424.060 rows=3638337 loops=5)
+                                      Heap Fetches: 0
+                                      Buffers: shared hit=124842
+Planning Time: 0.243 ms
+JIT:
+  Functions: 34
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 5.217 ms, Inlining 0.000 ms, Optimization 2.093 ms, Emission 37.273 ms, Total 44.584 ms
+Execution Time: 2601.607 ms

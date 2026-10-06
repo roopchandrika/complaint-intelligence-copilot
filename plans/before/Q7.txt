@@ -1,0 +1,51 @@
+-- Q7. Business question: What is the 3-month moving average of mortgage complaints?
+WITH monthly AS (
+    SELECT date_trunc('month', date_received) AS month, count(*) AS n
+    FROM complaints
+    WHERE product = 'Mortgage'
+    GROUP BY 1
+)
+SELECT month, n,
+       round(avg(n) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 1) AS ma_3m
+FROM monthly
+ORDER BY month DESC
+
+Sort  (cost=794638.05..794647.19 rows=3657 width=48) (actual time=29962.568..30054.539 rows=179 loops=1)
+  Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)) DESC
+  Sort Method: quicksort  Memory: 33kB
+  Buffers: shared hit=105013 read=628211
+  ->  WindowAgg  (cost=792478.15..794421.62 rows=3657 width=48) (actual time=29960.094..30053.219 rows=179 loops=1)
+        Buffers: shared hit=105013 read=628211
+        ->  Finalize GroupAggregate  (cost=792478.15..794357.62 rows=3657 width=16) (actual time=29336.643..29429.316 rows=179 loops=1)
+              Group Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+              Buffers: shared hit=105013 read=628211
+              ->  Gather Merge  (cost=792478.15..794229.63 rows=14628 width=16) (actual time=29335.850..29428.373 rows=846 loops=1)
+                    Workers Planned: 4
+                    Workers Launched: 4
+                    Buffers: shared hit=105013 read=628211
+                    ->  Sort  (cost=791478.09..791487.23 rows=3657 width=16) (actual time=28965.312..28965.458 rows=169 loops=5)
+                          Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+                          Sort Method: quicksort  Memory: 31kB
+                          Buffers: shared hit=105013 read=628211
+                          Worker 0:  Sort Method: quicksort  Memory: 31kB
+                          Worker 1:  Sort Method: quicksort  Memory: 31kB
+                          Worker 2:  Sort Method: quicksort  Memory: 31kB
+                          Worker 3:  Sort Method: quicksort  Memory: 31kB
+                          ->  Partial HashAggregate  (cost=791206.80..791261.66 rows=3657 width=16) (actual time=28964.019..28964.162 rows=169 loops=5)
+                                Group Key: date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)
+                                Batches: 1  Memory Usage: 129kB
+                                Buffers: shared hit=104981 read=628211
+                                Worker 0:  Batches: 1  Memory Usage: 129kB
+                                Worker 1:  Batches: 1  Memory Usage: 129kB
+                                Worker 2:  Batches: 1  Memory Usage: 129kB
+                                Worker 3:  Batches: 1  Memory Usage: 129kB
+                                ->  Parallel Seq Scan on complaints  (cost=0.00..790623.92 rows=116578 width=8) (actual time=430.970..28848.972 rows=92417 loops=5)
+                                      Filter: (product = 'Mortgage'::text)
+                                      Rows Removed by Filter: 3545920
+                                      Buffers: shared hit=104981 read=628211
+Planning Time: 13.872 ms
+JIT:
+  Functions: 49
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 57.140 ms, Inlining 1871.603 ms, Optimization 476.093 ms, Emission 430.903 ms, Total 2835.739 ms
+Execution Time: 30094.941 ms

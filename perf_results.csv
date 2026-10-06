@@ -1,0 +1,26 @@
+tag,query,title,median_ms,runs,scans,measured_at
+before,Q1,Business question: How many complaints does each product receive per month?,33654.46,3,Parallel Seq Scan on complaints,2026-10-06T09:45:29
+before,Q2,Business question: Is each product getting better or worse month over month?,5957.63,3,Parallel Seq Scan on complaints,2026-10-06T09:46:22
+before,Q3,Business question: What are the top 5 issues for each of the 10 most-complained-about companies?,12073.28,3,Seq Scan on complaints; Parallel Seq Scan on complaints,2026-10-06T09:51:15
+before,Q4,Business question: What is the running total of complaints per product during 2025?,8865.55,3,Parallel Seq Scan on complaints,2026-10-06T09:52:35
+before,Q5,Business question: Which companies respond late most often (at least 500 complaints)?,2697.19,3,Parallel Seq Scan on complaints,2026-10-06T09:52:54
+before,Q6,Business question: What share of each month's complaints does each product represent?,9069.98,3,Parallel Seq Scan on complaints,2026-10-06T09:54:00
+before,Q7,Business question: What is the 3-month moving average of mortgage complaints?,27450.87,3,Parallel Seq Scan on complaints,2026-10-06T09:56:51
+before,Q8,"Business question: How many days does the CFPB take to forward complaints, by channel?",158894.59,3,Seq Scan on complaints,2026-10-06T10:09:57
+before,P1,Business question (API lookup): What is the full record for one complaint?,26265.98,3,Parallel Seq Scan on complaints,2026-10-06T10:12:36
+before,P2,Business question (API lookup): What were Wells Fargo's top issues in 2025?,4505.03,3,Parallel Seq Scan on complaints,2026-10-06T10:12:55
+before,P3a,Business question: How many complaints arrived on 2025-03-03? (NOT sargable: function on the column),3654.35,3,Parallel Seq Scan on complaints,2026-10-06T10:13:15
+before,P3b,Business question: How many complaints arrived on 2025-03-03? (sargable: bare column vs a constant),1106.59,3,Parallel Seq Scan on complaints,2026-10-06T10:13:25
+after,Q1,Business question: How many complaints does each product receive per month?,2623.42,3,Parallel Index Only Scan using idx_complaints_product_date on complaints,2026-10-06T10:21:13
+after,Q2,Business question: Is each product getting better or worse month over month?,2155.84,3,Parallel Index Only Scan using idx_complaints_product_date on complaints,2026-10-06T10:21:23
+after,Q4,Business question: What is the running total of complaints per product during 2025?,521.21,3,Parallel Index Only Scan using idx_complaints_product_date on complaints,2026-10-06T10:31:29
+after,Q5,Business question: Which companies respond late most often (at least 500 complaints)?,27272.89,3,Parallel Seq Scan on complaints,2026-10-06T10:33:48
+after,Q6,Business question: What share of each month's complaints does each product represent?,2328.70,3,Parallel Index Only Scan using idx_complaints_product_date on complaints,2026-10-06T10:34:03
+after,Q7,Business question: What is the 3-month moving average of mortgage complaints?,93.95,3,Parallel Index Only Scan using idx_complaints_product_date on complaints,2026-10-06T10:34:04
+after,Q8,"Business question: How many days does the CFPB take to forward complaints, by channel?",132671.11,3,Seq Scan on complaints,2026-10-06T10:42:25
+after,P1,Business question (API lookup): What is the full record for one complaint?,2.43,3,Index Scan using idx_complaints_id on complaints,2026-10-06T10:42:25
+after,P2,Business question (API lookup): What were Wells Fargo's top issues in 2025?,33.68,3,Bitmap Heap Scan on complaints; Bitmap Index Scan on idx_complaints_company_date,2026-10-06T10:42:29
+after,P3a,Business question: How many complaints arrived on 2025-03-03? (NOT sargable: function on the column),2423.99,3,Parallel Index Only Scan using idx_complaints_date on complaints,2026-10-06T10:42:43
+after,P3b,Business question: How many complaints arrived on 2025-03-03? (sargable: bare column vs a constant),2.91,3,Index Only Scan using idx_complaints_date on complaints,2026-10-06T10:42:43
+after,Q2-MV,"Same question as Q2, answered from the pre-aggregated materialized view (exists only after fixes.sql)",13.81,3,Seq Scan on mv_monthly_product,2026-10-06T10:42:43
+after,Q5,Business question: Which companies respond late most often (at least 500 complaints)?,30904.06,3,Parallel Seq Scan on complaints,2026-10-06T11:07:54

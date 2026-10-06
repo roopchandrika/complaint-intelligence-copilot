@@ -1,0 +1,21 @@
+-- P3b. Business question: How many complaints arrived on 2025-03-03? (sargable: bare column vs a constant)
+SELECT count(*) FROM complaints WHERE date_received = DATE '2025-03-03'
+
+Finalize Aggregate  (cost=791044.12..791044.13 rows=1 width=8) (actual time=4586.359..4603.597 rows=1 loops=1)
+  Buffers: shared hit=108341 read=624851
+  ->  Gather  (cost=791043.70..791044.11 rows=4 width=8) (actual time=4586.300..4603.551 rows=5 loops=1)
+        Workers Planned: 4
+        Workers Launched: 4
+        Buffers: shared hit=108341 read=624851
+        ->  Partial Aggregate  (cost=790043.70..790043.71 rows=1 width=8) (actual time=4539.703..4539.705 rows=1 loops=5)
+              Buffers: shared hit=108341 read=624851
+              ->  Parallel Seq Scan on complaints  (cost=0.00..790041.03 rows=1071 width=0) (actual time=1235.822..4539.331 rows=2782 loops=5)
+                    Filter: (date_received = '2025-03-03'::date)
+                    Rows Removed by Filter: 3635556
+                    Buffers: shared hit=108341 read=624851
+Planning Time: 0.095 ms
+JIT:
+  Functions: 22
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 3.340 ms, Inlining 551.076 ms, Optimization 80.209 ms, Emission 72.161 ms, Total 706.786 ms
+Execution Time: 4604.294 ms

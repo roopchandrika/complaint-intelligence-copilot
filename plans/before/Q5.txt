@@ -1,0 +1,50 @@
+-- Q5. Business question: Which companies respond late most often (at least 500 complaints)?
+SELECT company,
+       count(*)                                        AS complaints,
+       count(*) FILTER (WHERE timely_response = 'No')  AS late,
+       round(100.0 * count(*) FILTER (WHERE timely_response = 'No') / count(*), 2) AS late_pct
+FROM complaints
+GROUP BY company
+HAVING count(*) >= 500
+ORDER BY late_pct DESC
+LIMIT 20
+
+Limit  (cost=825682.30..825682.35 rows=20 width=76) (actual time=3719.850..3755.030 rows=20 loops=1)
+  Buffers: shared hit=103413 read=629811
+  ->  Sort  (cost=825682.30..825683.05 rows=299 width=76) (actual time=3356.899..3392.074 rows=20 loops=1)
+        Sort Key: (round(((100.0 * (count(*) FILTER (WHERE (timely_response = 'No'::text)))::numeric) / (count(*))::numeric), 2)) DESC
+        Sort Method: top-N heapsort  Memory: 28kB
+        Buffers: shared hit=103413 read=629811
+        ->  Finalize GroupAggregate  (cost=825203.39..825674.34 rows=299 width=76) (actual time=3323.247..3391.592 rows=546 loops=1)
+              Group Key: company
+              Filter: (count(*) >= 500)
+              Rows Removed by Filter: 7598
+              Buffers: shared hit=103413 read=629811
+              ->  Gather Merge  (cost=825203.39..825632.52 rows=3584 width=44) (actual time=3323.107..3383.650 rows=28771 loops=1)
+                    Workers Planned: 4
+                    Workers Launched: 4
+                    Buffers: shared hit=103413 read=629811
+                    ->  Sort  (cost=824203.34..824205.58 rows=896 width=44) (actual time=3288.514..3290.004 rows=5754 loops=5)
+                          Sort Key: company
+                          Sort Method: quicksort  Memory: 597kB
+                          Buffers: shared hit=103413 read=629811
+                          Worker 0:  Sort Method: quicksort  Memory: 579kB
+                          Worker 1:  Sort Method: quicksort  Memory: 589kB
+                          Worker 2:  Sort Method: quicksort  Memory: 584kB
+                          Worker 3:  Sort Method: quicksort  Memory: 583kB
+                          ->  Partial HashAggregate  (cost=824150.44..824159.40 rows=896 width=44) (actual time=3270.613..3272.240 rows=5754 loops=5)
+                                Group Key: company
+                                Batches: 1  Memory Usage: 1233kB
+                                Buffers: shared hit=103381 read=629811
+                                Worker 0:  Batches: 1  Memory Usage: 1233kB
+                                Worker 1:  Batches: 1  Memory Usage: 1233kB
+                                Worker 2:  Batches: 1  Memory Usage: 1233kB
+                                Worker 3:  Batches: 1  Memory Usage: 1233kB
+                                ->  Parallel Seq Scan on complaints  (cost=0.00..778671.22 rows=4547922 width=31) (actual time=0.043..1267.547 rows=3638337 loops=5)
+                                      Buffers: shared hit=103381 read=629811
+Planning Time: 0.173 ms
+JIT:
+  Functions: 35
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 5.425 ms, Inlining 538.902 ms, Optimization 726.401 ms, Emission 498.814 ms, Total 1769.543 ms
+Execution Time: 3756.745 ms

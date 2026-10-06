@@ -1,0 +1,47 @@
+-- Q6. Business question: What share of each month's complaints does each product represent?
+WITH monthly AS (
+    SELECT date_trunc('month', date_received) AS month, product, count(*) AS n
+    FROM complaints GROUP BY 1, 2
+)
+SELECT month, product, n,
+       round(100.0 * n / sum(n) OVER (PARTITION BY month), 2) AS pct_of_month
+FROM monthly
+ORDER BY month DESC, pct_of_month DESC
+
+Sort  (cost=889585.00..889767.85 rows=73140 width=96) (actual time=28557.361..28704.887 rows=1700 loops=1)
+  Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)) DESC, (round(((100.0 * ((count(*)))::numeric) / sum((count(*))) OVER (?)), 2)) DESC
+  Sort Method: quicksort  Memory: 175kB
+  Buffers: shared hit=104245 read=629011
+  ->  WindowAgg  (cost=843526.52..883675.89 rows=73140 width=96) (actual time=28500.285..28665.422 rows=1700 loops=1)
+        Buffers: shared hit=104245 read=629011
+        ->  Finalize GroupAggregate  (cost=843526.52..881847.39 rows=73140 width=64) (actual time=28499.381..28660.330 rows=1700 loops=1)
+              Group Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)), complaints.product
+              Buffers: shared hit=104245 read=629011
+              ->  Gather Merge  (cost=843526.52..878556.09 rows=292560 width=64) (actual time=28498.987..28655.203 rows=7906 loops=1)
+                    Workers Planned: 4
+                    Workers Launched: 4
+                    Buffers: shared hit=104245 read=629011
+                    ->  Sort  (cost=842526.46..842709.31 rows=73140 width=64) (actual time=27981.975..27982.402 rows=1581 loops=5)
+                          Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)), complaints.product
+                          Sort Method: quicksort  Memory: 152kB
+                          Buffers: shared hit=104245 read=629011
+                          Worker 0:  Sort Method: quicksort  Memory: 155kB
+                          Worker 1:  Sort Method: quicksort  Memory: 154kB
+                          Worker 2:  Sort Method: quicksort  Memory: 154kB
+                          Worker 3:  Sort Method: quicksort  Memory: 151kB
+                          ->  Partial HashAggregate  (cost=835520.24..836617.34 rows=73140 width=64) (actual time=27953.334..27968.886 rows=1581 loops=5)
+                                Group Key: date_trunc('month'::text, (complaints.date_received)::timestamp with time zone), complaints.product
+                                Batches: 1  Memory Usage: 3345kB
+                                Buffers: shared hit=104181 read=629011
+                                Worker 0:  Batches: 1  Memory Usage: 3345kB
+                                Worker 1:  Batches: 1  Memory Usage: 3345kB
+                                Worker 2:  Batches: 1  Memory Usage: 3345kB
+                                Worker 3:  Batches: 1  Memory Usage: 3345kB
+                                ->  Parallel Seq Scan on complaints  (cost=0.00..801410.83 rows=4547922 width=56) (actual time=845.768..26165.955 rows=3638337 loops=5)
+                                      Buffers: shared hit=104181 read=629011
+Planning Time: 11.492 ms
+JIT:
+  Functions: 38
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 124.144 ms, Inlining 2721.478 ms, Optimization 936.850 ms, Emission 580.082 ms, Total 4362.554 ms
+Execution Time: 28824.678 ms

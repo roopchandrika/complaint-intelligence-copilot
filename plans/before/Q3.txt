@@ -1,0 +1,86 @@
+-- Q3. Business question: What are the top 5 issues for each of the 10 most-complained-about companies?
+WITH top_companies AS (
+    SELECT company FROM complaints
+    GROUP BY company ORDER BY count(*) DESC LIMIT 10
+),
+issue_counts AS (
+    SELECT c.company, c.issue, count(*) AS n
+    FROM complaints c
+    JOIN top_companies t ON t.company = c.company
+    GROUP BY 1, 2
+),
+ranked AS (
+    SELECT *, DENSE_RANK() OVER (PARTITION BY company ORDER BY n DESC) AS rnk
+    FROM issue_counts
+)
+SELECT company, rnk, issue, n FROM ranked WHERE rnk <= 5 ORDER BY company, rnk
+
+Incremental Sort  (cost=1779200.28..1790058.77 rows=122752 width=83) (actual time=139371.291..139374.288 rows=50 loops=1)
+  Sort Key: ranked.company, ranked.rnk
+  Presorted Key: ranked.company
+  Full-sort Groups: 2  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB
+  Buffers: shared hit=203690 read=1262726
+  ->  Subquery Scan on ranked  (cost=1779153.45..1782836.01 rows=122752 width=83) (actual time=139369.648..139372.742 rows=50 loops=1)
+        Buffers: shared hit=203690 read=1262726
+        ->  WindowAgg  (cost=1779153.45..1781608.49 rows=122752 width=83) (actual time=139369.579..139372.649 rows=50 loops=1)
+              Run Condition: (dense_rank() OVER (?) <= 5)
+              Buffers: shared hit=203690 read=1262726
+              ->  Sort  (cost=1779153.45..1779460.33 rows=122752 width=75) (actual time=139367.411..139369.712 rows=1414 loops=1)
+                    Sort Key: issue_counts.company, issue_counts.n DESC
+                    Sort Method: quicksort  Memory: 183kB
+                    Buffers: shared hit=203690 read=1262726
+                    ->  Subquery Scan on issue_counts  (cost=1767550.08..1768777.60 rows=122752 width=75) (actual time=139351.358..139362.381 rows=1414 loops=1)
+                          Buffers: shared hit=203690 read=1262726
+                          ->  HashAggregate  (cost=1767550.08..1768777.60 rows=122752 width=75) (actual time=139350.992..139361.777 rows=1414 loops=1)
+                                Group Key: c.company, c.issue
+                                Batches: 1  Memory Usage: 6417kB
+                                Buffers: shared hit=203690 read=1262726
+                                ->  Hash Join  (cost=802939.41..1766027.34 rows=203032 width=67) (actual time=31541.732..133532.050 rows=15283963 loops=1)
+                                      Hash Cond: (c.company = t.company)
+                                      Buffers: shared hit=203690 read=1262726
+                                      ->  Seq Scan on complaints c  (cost=0.00..915108.88 rows=18191688 width=67) (actual time=0.362..86846.790 rows=18191687 loops=1)
+                                            Buffers: shared hit=101909 read=631283
+                                      ->  Hash  (cost=802939.28..802939.28 rows=10 width=28) (actual time=31539.861..31541.604 rows=10 loops=1)
+                                            Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                            Buffers: shared hit=101781 read=631443
+                                            ->  Subquery Scan on t  (cost=802939.16..802939.28 rows=10 width=28) (actual time=31538.425..31540.272 rows=10 loops=1)
+                                                  Buffers: shared hit=101781 read=631443
+                                                  ->  Limit  (cost=802939.16..802939.18 rows=10 width=36) (actual time=31538.321..31539.827 rows=10 loops=1)
+                                                        Buffers: shared hit=101781 read=631443
+                                                        ->  Sort  (cost=802939.16..802941.40 rows=896 width=36) (actual time=30501.061..30502.456 rows=10 loops=1)
+                                                              Sort Key: (count(*)) DESC
+                                                              Sort Method: top-N heapsort  Memory: 26kB
+                                                              Buffers: shared hit=101781 read=631443
+                                                              ->  Finalize GroupAggregate  (cost=802463.78..802919.79 rows=896 width=36) (actual time=30464.843..30499.638 rows=8144 loops=1)
+                                                                    Group Key: complaints.company
+                                                                    Buffers: shared hit=101781 read=631443
+                                                                    ->  Gather Merge  (cost=802463.78..802892.91 rows=3584 width=36) (actual time=30464.099..30491.121 rows=28720 loops=1)
+                                                                          Workers Planned: 4
+                                                                          Workers Launched: 4
+                                                                          Buffers: shared hit=101781 read=631443
+                                                                          ->  Sort  (cost=801463.73..801465.97 rows=896 width=36) (actual time=29882.477..29883.929 rows=5744 loops=5)
+                                                                                Sort Key: complaints.company
+                                                                                Sort Method: quicksort  Memory: 547kB
+                                                                                Buffers: shared hit=101781 read=631443
+                                                                                Worker 0:  Sort Method: quicksort  Memory: 548kB
+                                                                                Worker 1:  Sort Method: quicksort  Memory: 540kB
+                                                                                Worker 2:  Sort Method: quicksort  Memory: 532kB
+                                                                                Worker 3:  Sort Method: quicksort  Memory: 538kB
+                                                                                ->  Partial HashAggregate  (cost=801410.83..801419.79 rows=896 width=36) (actual time=29854.225..29856.516 rows=5744 loops=5)
+                                                                                      Group Key: complaints.company
+                                                                                      Batches: 1  Memory Usage: 1233kB
+                                                                                      Buffers: shared hit=101749 read=631443
+                                                                                      Worker 0:  Batches: 1  Memory Usage: 1233kB
+                                                                                      Worker 1:  Batches: 1  Memory Usage: 1233kB
+                                                                                      Worker 2:  Batches: 1  Memory Usage: 721kB
+                                                                                      Worker 3:  Batches: 1  Memory Usage: 1233kB
+                                                                                      ->  Parallel Seq Scan on complaints  (cost=0.00..778671.22 rows=4547922 width=28) (actual time=0.782..25612.578 rows=3638337 loops=5)
+                                                                                            Buffers: shared hit=101749 read=631443
+Planning:
+  Buffers: shared hit=1
+Planning Time: 21.326 ms
+JIT:
+  Functions: 50
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 84.454 ms, Inlining 958.006 ms, Optimization 736.627 ms, Emission 590.239 ms, Total 2369.326 ms
+Execution Time: 139472.003 ms

@@ -1,0 +1,29 @@
+-- P2. Business question (API lookup): What were Wells Fargo's top issues in 2025?
+SELECT issue, count(*) AS n
+FROM complaints
+WHERE company = 'WELLS FARGO & COMPANY'
+  AND date_received >= DATE '2025-01-01' AND date_received < DATE '2026-01-01'
+GROUP BY issue
+ORDER BY n DESC
+
+Sort  (cost=162655.43..162655.77 rows=136 width=47) (actual time=32.156..32.161 rows=72 loops=1)
+  Sort Key: (count(*)) DESC
+  Sort Method: quicksort  Memory: 29kB
+  Buffers: shared hit=18533
+  ->  HashAggregate  (cost=162649.25..162650.61 rows=136 width=47) (actual time=32.129..32.139 rows=72 loops=1)
+        Group Key: issue
+        Batches: 1  Memory Usage: 40kB
+        Buffers: shared hit=18533
+        ->  Bitmap Heap Scan on complaints  (cost=919.30..162390.92 rows=51666 width=39) (actual time=3.926..23.177 rows=19468 loops=1)
+              Recheck Cond: ((company = 'WELLS FARGO & COMPANY'::text) AND (date_received >= '2025-01-01'::date) AND (date_received < '2026-01-01'::date))
+              Heap Blocks: exact=18511
+              Buffers: shared hit=18533
+              ->  Bitmap Index Scan on idx_complaints_company_date  (cost=0.00..906.39 rows=51666 width=0) (actual time=1.573..1.573 rows=19468 loops=1)
+                    Index Cond: ((company = 'WELLS FARGO & COMPANY'::text) AND (date_received >= '2025-01-01'::date) AND (date_received < '2026-01-01'::date))
+                    Buffers: shared hit=22
+Planning Time: 0.472 ms
+JIT:
+  Functions: 7
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 0.848 ms, Inlining 0.000 ms, Optimization 0.368 ms, Emission 5.161 ms, Total 6.377 ms
+Execution Time: 33.104 ms

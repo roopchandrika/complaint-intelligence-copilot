@@ -1,0 +1,11 @@
+-- P3b. Business question: How many complaints arrived on 2025-03-03? (sargable: bare column vs a constant)
+SELECT count(*) FROM complaints WHERE date_received = DATE '2025-03-03'
+
+Aggregate  (cost=101.92..101.93 rows=1 width=8) (actual time=1.779..1.779 rows=1 loops=1)
+  Buffers: shared hit=16
+  ->  Index Only Scan using idx_complaints_date on complaints  (cost=0.44..91.23 rows=4274 width=0) (actual time=0.022..0.978 rows=13909 loops=1)
+        Index Cond: (date_received = '2025-03-03'::date)
+        Heap Fetches: 0
+        Buffers: shared hit=16
+Planning Time: 0.099 ms
+Execution Time: 1.801 ms

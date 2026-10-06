@@ -1,0 +1,50 @@
+-- Q4. Business question: What is the running total of complaints per product during 2025?
+WITH daily AS (
+    SELECT product, date_received AS d, count(*) AS n
+    FROM complaints
+    WHERE date_received >= DATE '2025-01-01' AND date_received < DATE '2026-01-01'
+    GROUP BY 1, 2
+)
+SELECT product, d, n,
+       sum(n) OVER (PARTITION BY product ORDER BY d
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM daily
+ORDER BY product, d
+
+WindowAgg  (cost=819133.69..858368.80 rows=73140 width=92) (actual time=3833.701..3857.323 rows=4015 loops=1)
+  Buffers: shared hit=102645 read=630611
+  ->  Finalize GroupAggregate  (cost=819133.69..857088.85 rows=73140 width=60) (actual time=3833.671..3854.487 rows=4015 loops=1)
+        Group Key: complaints.product, complaints.date_received
+        Buffers: shared hit=102645 read=630611
+        ->  Gather Merge  (cost=819133.69..854163.25 rows=292560 width=60) (actual time=3833.594..3852.622 rows=9827 loops=1)
+              Workers Planned: 4
+              Workers Launched: 4
+              Buffers: shared hit=102645 read=630611
+              ->  Sort  (cost=818133.63..818316.48 rows=73140 width=60) (actual time=3789.157..3789.322 rows=1965 loops=5)
+                    Sort Key: complaints.product, complaints.date_received
+                    Sort Method: quicksort  Memory: 235kB
+                    Buffers: shared hit=102645 read=630611
+                    Worker 0:  Sort Method: quicksort  Memory: 181kB
+                    Worker 1:  Sort Method: quicksort  Memory: 176kB
+                    Worker 2:  Sort Method: quicksort  Memory: 167kB
+                    Worker 3:  Sort Method: quicksort  Memory: 172kB
+                    ->  Partial HashAggregate  (cost=811493.11..812224.51 rows=73140 width=60) (actual time=3785.368..3786.731 rows=1965 loops=5)
+                          Group Key: complaints.product, complaints.date_received
+                          Batches: 1  Memory Usage: 3345kB
+                          Buffers: shared hit=102581 read=630611
+                          Worker 0:  Batches: 1  Memory Usage: 3345kB
+                          Worker 1:  Batches: 1  Memory Usage: 3345kB
+                          Worker 2:  Batches: 1  Memory Usage: 3345kB
+                          Worker 3:  Batches: 1  Memory Usage: 3345kB
+                          ->  Parallel Seq Scan on complaints  (cost=0.00..801410.83 rows=1344304 width=52) (actual time=385.177..3463.844 rows=1088591 loops=5)
+                                Filter: ((date_received >= '2025-01-01'::date) AND (date_received < '2026-01-01'::date))
+                                Rows Removed by Filter: 2549746
+                                Buffers: shared hit=102581 read=630611
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.251 ms
+JIT:
+  Functions: 44
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 9.241 ms, Inlining 661.193 ms, Optimization 313.388 ms, Emission 268.868 ms, Total 1252.690 ms
+Execution Time: 3860.281 ms

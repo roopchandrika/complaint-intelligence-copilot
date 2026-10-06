@@ -1,0 +1,49 @@
+-- Q2. Business question: Is each product getting better or worse month over month?
+WITH monthly AS (
+    SELECT product, date_trunc('month', date_received) AS month, count(*) AS n
+    FROM complaints
+    GROUP BY 1, 2
+)
+SELECT product, month, n,
+       LAG(n) OVER w                                           AS prev_n,
+       n - LAG(n) OVER w                                       AS mom_change,
+       round(100.0 * (n - LAG(n) OVER w) / NULLIF(LAG(n) OVER w, 0), 1) AS mom_pct
+FROM monthly
+WINDOW w AS (PARTITION BY product ORDER BY month)
+ORDER BY month DESC, n DESC
+
+Sort  (cost=307460.41..307633.31 rows=69160 width=112) (actual time=2066.809..2071.894 rows=1700 loops=1)
+  Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)) DESC, (count(*)) DESC
+  Sort Method: quicksort  Memory: 201kB
+  Buffers: shared hit=124831
+  ->  WindowAgg  (cost=299134.35..301900.75 rows=69160 width=112) (actual time=2063.967..2070.945 rows=1700 loops=1)
+        Buffers: shared hit=124831
+        ->  Sort  (cost=299134.35..299307.25 rows=69160 width=64) (actual time=2063.915..2069.059 rows=1700 loops=1)
+              Sort Key: complaints.product, (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+              Sort Method: quicksort  Memory: 162kB
+              Buffers: shared hit=124831
+              ->  Finalize HashAggregate  (cost=292537.30..293574.70 rows=69160 width=64) (actual time=2061.213..2067.013 rows=1700 loops=1)
+                    Group Key: complaints.product, (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+                    Batches: 1  Memory Usage: 3345kB
+                    Buffers: shared hit=124831
+                    ->  Gather  (cost=261761.10..290462.50 rows=276640 width=64) (actual time=2057.090..2063.492 rows=4460 loops=1)
+                          Workers Planned: 4
+                          Workers Launched: 4
+                          Buffers: shared hit=124831
+                          ->  Partial HashAggregate  (cost=260761.10..261798.50 rows=69160 width=64) (actual time=2029.602..2030.548 rows=892 loops=5)
+                                Group Key: complaints.product, date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)
+                                Batches: 1  Memory Usage: 3217kB
+                                Buffers: shared hit=124831
+                                Worker 0:  Batches: 1  Memory Usage: 3217kB
+                                Worker 1:  Batches: 1  Memory Usage: 3217kB
+                                Worker 2:  Batches: 1  Memory Usage: 3217kB
+                                Worker 3:  Batches: 1  Memory Usage: 3217kB
+                                ->  Parallel Index Only Scan using idx_complaints_product_date on complaints  (cost=0.56..226649.24 rows=4548248 width=56) (actual time=8.706..1119.216 rows=3638337 loops=5)
+                                      Heap Fetches: 0
+                                      Buffers: shared hit=124831
+Planning Time: 0.162 ms
+JIT:
+  Functions: 41
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 4.511 ms, Inlining 0.000 ms, Optimization 2.153 ms, Emission 41.212 ms, Total 47.876 ms
+Execution Time: 2073.678 ms

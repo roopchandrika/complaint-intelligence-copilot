@@ -1,0 +1,42 @@
+-- Q7. Business question: What is the 3-month moving average of mortgage complaints?
+WITH monthly AS (
+    SELECT date_trunc('month', date_received) AS month, count(*) AS n
+    FROM complaints
+    WHERE product = 'Mortgage'
+    GROUP BY 1
+)
+SELECT month, n,
+       round(avg(n) OVER (ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 1) AS ma_3m
+FROM monthly
+ORDER BY month DESC
+
+Sort  (cost=11030.92..11040.02 rows=3640 width=48) (actual time=90.677..96.603 rows=179 loops=1)
+  Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)) DESC
+  Sort Method: quicksort  Memory: 33kB
+  Buffers: shared hit=24689
+  ->  WindowAgg  (cost=10742.82..10815.62 rows=3640 width=48) (actual time=90.506..96.563 rows=179 loops=1)
+        Buffers: shared hit=24689
+        ->  Sort  (cost=10742.82..10751.92 rows=3640 width=16) (actual time=90.484..96.409 rows=179 loops=1)
+              Sort Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+              Sort Method: quicksort  Memory: 31kB
+              Buffers: shared hit=24689
+              ->  Finalize HashAggregate  (cost=10472.92..10527.52 rows=3640 width=16) (actual time=90.405..96.360 rows=179 loops=1)
+                    Group Key: (date_trunc('month'::text, (complaints.date_received)::timestamp with time zone))
+                    Batches: 1  Memory Usage: 129kB
+                    Buffers: shared hit=24689
+                    ->  Gather  (cost=9653.92..10436.52 rows=7280 width=16) (actual time=90.113..96.124 rows=443 loops=1)
+                          Workers Planned: 2
+                          Workers Launched: 2
+                          Buffers: shared hit=24689
+                          ->  Partial HashAggregate  (cost=8653.92..8708.52 rows=3640 width=16) (actual time=76.009..76.060 rows=148 loops=3)
+                                Group Key: date_trunc('month'::text, (complaints.date_received)::timestamp with time zone)
+                                Batches: 1  Memory Usage: 129kB
+                                Buffers: shared hit=24689
+                                Worker 0:  Batches: 1  Memory Usage: 129kB
+                                Worker 1:  Batches: 1  Memory Usage: 129kB
+                                ->  Parallel Index Only Scan using idx_complaints_product_date on complaints  (cost=0.56..7731.63 rows=184457 width=8) (actual time=0.049..46.872 rows=154029 loops=3)
+                                      Index Cond: (product = 'Mortgage'::text)
+                                      Heap Fetches: 0
+                                      Buffers: shared hit=24689
+Planning Time: 0.166 ms
+Execution Time: 96.696 ms

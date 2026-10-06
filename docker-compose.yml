@@ -1,0 +1,29 @@
+# Postgres 16 for Day 3 (query performance). Later days add more services to this file.
+# Start:  docker compose up -d        Stop:  docker compose stop
+# Data is kept in the named volume "pgdata", so it survives restarts.
+services:
+  postgres:
+    image: postgres:16
+    container_name: pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres     # local development only
+      POSTGRES_DB: complaints
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 1gb                     # room for parallel query workers
+    command: >
+      postgres
+        -c shared_buffers=1GB
+        -c work_mem=64MB
+        -c maintenance_work_mem=1GB
+        -c max_parallel_workers_per_gather=4
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d complaints"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:

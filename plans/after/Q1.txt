@@ -1,0 +1,37 @@
+-- Q1. Business question: How many complaints does each product receive per month?
+SELECT product,
+       date_trunc('month', date_received) AS month,
+       count(*)                           AS complaints
+FROM complaints
+GROUP BY 1, 2
+ORDER BY month DESC, complaints DESC
+
+Sort  (cost=299134.35..299307.25 rows=69160 width=64) (actual time=3025.175..3036.383 rows=1700 loops=1)
+  Sort Key: (date_trunc('month'::text, (date_received)::timestamp with time zone)) DESC, (count(*)) DESC
+  Sort Method: quicksort  Memory: 162kB
+  Buffers: shared hit=124845
+  ->  Finalize HashAggregate  (cost=292537.30..293574.70 rows=69160 width=64) (actual time=3023.199..3035.201 rows=1700 loops=1)
+        Group Key: product, (date_trunc('month'::text, (date_received)::timestamp with time zone))
+        Batches: 1  Memory Usage: 3345kB
+        Buffers: shared hit=124845
+        ->  Gather  (cost=261761.10..290462.50 rows=276640 width=64) (actual time=3018.721..3031.220 rows=4488 loops=1)
+              Workers Planned: 4
+              Workers Launched: 4
+              Buffers: shared hit=124845
+              ->  Partial HashAggregate  (cost=260761.10..261798.50 rows=69160 width=64) (actual time=2986.329..2987.184 rows=898 loops=5)
+                    Group Key: product, date_trunc('month'::text, (date_received)::timestamp with time zone)
+                    Batches: 1  Memory Usage: 3217kB
+                    Buffers: shared hit=124845
+                    Worker 0:  Batches: 1  Memory Usage: 3217kB
+                    Worker 1:  Batches: 1  Memory Usage: 3217kB
+                    Worker 2:  Batches: 1  Memory Usage: 3217kB
+                    Worker 3:  Batches: 1  Memory Usage: 3217kB
+                    ->  Parallel Index Only Scan using idx_complaints_product_date on complaints  (cost=0.56..226649.24 rows=4548248 width=56) (actual time=6.855..1646.790 rows=3638337 loops=5)
+                          Heap Fetches: 0
+                          Buffers: shared hit=124845
+Planning Time: 0.149 ms
+JIT:
+  Functions: 29
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 4.354 ms, Inlining 0.000 ms, Optimization 1.860 ms, Emission 32.349 ms, Total 38.563 ms
+Execution Time: 3038.191 ms
