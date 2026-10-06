@@ -6,3 +6,4 @@ data/raw/
 *.duckdb.wal
 data/dbt_complaints/target/
 data/dbt_complaints/logs/
+`n*.zip
