@@ -1,0 +1,46 @@
+version: 2
+
+seeds:
+  - name: product_map
+    config:
+      column_types: {product: varchar, product_group: varchar}   # read as text: no type guessing
+    description: CFPB product names (old and new wording) -> one stable product_group.
+    columns:
+      - name: product
+        data_tests: [unique, not_null]
+      - name: product_group
+        data_tests: [not_null]
+  - name: issue_map
+    config:
+      column_types: {issue_raw: varchar, issue_clean: varchar}   # read as text: no type guessing
+    description: Old CFPB issue names -> current wording. Each mapping was checked with first/last-seen dates (Day 6 drill 4).
+    columns:
+      - name: issue_raw
+        data_tests: [unique, not_null]
+  - name: company_map
+    config:
+      column_types: {company_norm: varchar, company_canonical: varchar}   # read as text: no type guessing
+    description: Human-reviewed company merges (base name -> canonical name). Overrides the automatic rules.
+    columns:
+      - name: company_norm
+        data_tests: [unique, not_null]
+      - name: company_canonical
+        data_tests: [not_null]
+  - name: state_ref
+    config:
+      column_types: {state_code: varchar, state_name: varchar, region: varchar}   # read as text: no type guessing
+    description: US states, DC, territories and military codes with US Census region.
+    columns:
+      - name: state_code
+        data_tests: [unique, not_null]
+  - name: state_alias
+    config:
+      column_types: {state_raw: varchar, state_code: varchar}   # read as text: no type guessing
+    description: Full names the CFPB sometimes writes instead of a code.
+    columns:
+      - name: state_raw
+        data_tests: [unique]
+      - name: state_code
+        data_tests:
+          - relationships:
+              arguments: {to: ref('state_ref'), field: state_code}

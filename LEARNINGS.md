@@ -335,3 +335,63 @@
 - Automatic checks all passed while some cleaning was wrong. Checks prove counts, not
   the correctness of every value. Only reading the report and the merge list found the
   mistakes.
+
+  ## Day 7 - dbt + DuckDB: models, sources, tests, docs (2026-10-06)
+
+### What I built
+- data/dbt_complaints: a dbt project that rebuilds the Day 6 Silver and Gold layers
+  from bronze.complaints_raw.
+  - Staging: stg_complaints (typed and trimmed, a view), stg_complaints_rejects.
+  - Intermediate: int_company_lookup (company rules), int_complaints (cleaned, one row
+    per complaint).
+  - Marts: fct_complaints + dim_date, dim_company, dim_product, dim_state (star schema),
+    and agg_monthly_product, company_scorecard, company_top_issues,
+    channel_forwarding_stats.
+- 5 seeds (product groups, issue renames, company merges, states, state aliases),
+  each with its own tests.
+- 2 macros for the company rules (clean text; remove legal suffixes from the end only).
+- 62 data tests: unique / not_null on every key, relationships from the fact to every
+  dimension, accepted values and ranges, plus 4 tests I wrote:
+  - Bronze = clean rows + rejects + duplicates
+  - every summary table adds back up to the clean table
+  - no company merges across different legal forms
+  - only the latest month is flagged as partial
+- 1 unit test that checks the company rules on fixed example names.
+- Documentation site with a lineage graph (dbt docs).
+- ASSUMPTIONS.md: 21 cleaning decisions, why each was made, and how many rows each affects.
+
+### Problems I hit and how I fixed them
+- dbt build failed: "could not detect the CSV dialect" in seeds/company_map.csv. The file
+  had been saved in a format DuckDB could not read. dbt skipped all 54 steps that depended
+  on it, so no wrong data reached the marts. Fix: rewrote the file as plain UTF-8.
+  Lesson: edit seed files in a text editor, never in Excel.
+- The first project version set seed column types for all seeds at once, which caused
+  warnings for columns that did not exist. Fix: set column types per seed in _seeds.yml.
+
+### Numbers
+- dbt build on 18,191,687 rows: 102 seconds. 5 seeds, 13 models, 62 data tests, 1 unit test.
+- Result: PASS=80, WARN=1, ERROR=0.
+- The one warning: 7,050 complaints sent before they were received. This is exactly the
+  number my Day 6 Python pipeline flagged, so two separate implementations agree.
+- Broken seed run: PASS=26, ERROR=1, SKIP=54. One bad file stopped everything downstream.
+
+### What I learned
+- dbt is the "T" in ELT: I write SELECT statements; dbt builds them as tables or views
+  in the right order and tests them.
+- ref() connects models. It decides the build order and draws the lineage graph.
+  source() declares data that comes from outside dbt (my Bronze table).
+- Materializations: a view stores only the query (cheap, recomputed when read); a table
+  stores the result (costs disk, fast to read). Staging is a view because only the next
+  step reads it; the 18M-row cleaned table is a table because many models read it.
+- A test is a query that returns bad rows. It passes when it returns nothing.
+- dbt build skips everything downstream of a failed test, so bad data cannot reach the
+  final tables. I saw this happen for real with the broken seed file.
+- Data tests check today's data; unit tests check the logic on fixed examples. My unit
+  test will catch it if someone changes the company rules and breaks the Independent
+  Bank or Credit Corp Solutions cases again.
+- Severity matters: the 7,050 negative-days rows are a known, flagged issue, so that test
+  warns instead of failing the whole build.
+- Seeds are good for small reference lists that people review (mappings, codes),
+  not for real data.
+- Macros keep repeated SQL in one place; dbt compile shows the plain SQL they produce.
+- ASSUMPTIONS.md turns cleaning into decisions a client can read, question and sign off.

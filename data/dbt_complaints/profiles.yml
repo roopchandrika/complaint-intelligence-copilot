@@ -1,0 +1,8 @@
+# Connection settings. Run dbt from this folder with:  dbt <command> --profiles-dir .
+dbt_complaints:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../warehouse.duckdb     # the Day 6 warehouse: dbt reads bronze.complaints_raw from it
+      threads: 4

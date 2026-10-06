@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: int_company_lookup
+    description: >
+      One row per raw company spelling and the company it belongs to. Suffixes are removed from the end
+      only; spellings merge only when they share one legal form; company_map (human decisions) overrides.
+    columns:
+      - name: company_raw
+        data_tests: [unique, not_null]
+      - name: company
+        data_tests: [not_null]
+      - name: legal_form
+        description: Standardized legal form that was removed (INC, CORP, NA, LLC ...). Empty if none.
+
+  - name: int_complaints
+    description: >
+      The cleaned complaint table (Day 6 Silver). Grain: one row per complaint_id. Duplicates removed
+      (latest date_sent_to_company wins). Problems are flagged in dq_* columns, never deleted.
+    columns:
+      - name: complaint_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: date_received
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments: {min_value: "date '2011-12-01'", max_value: "current_date"}
+      - name: product_group
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('product_map'), field: product_group}
+              config: {severity: warn}
+      - name: company
+        description: Cleaned company name (see int_company_lookup).
+        data_tests: [not_null]
+      - name: state
+        description: Valid state/territory code, NULL if missing or invalid.
+        data_tests:
+          - relationships:
+              arguments: {to: ref('state_ref'), field: state_code}
+      - name: submitted_via
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['Web', 'Referral', 'Phone', 'Postal mail', 'Fax', 'Email', 'Web Referral', 'Unknown']}
+              config: {severity: warn}
+      - name: days_to_send
+        description: Days from received to sent. Negative values are flagged by dq_sent_before_received.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0}
+              config:
+                severity: warn
+                warn_if: ">0"

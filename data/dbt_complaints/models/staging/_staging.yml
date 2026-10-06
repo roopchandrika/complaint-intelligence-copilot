@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: stg_complaints
+    description: Bronze rows typed and trimmed. One row per Bronze row; no filtering, no business rules.
+    columns:
+      - name: complaint_id
+        description: CFPB complaint ID. NULL if the raw value was not a number (see stg_complaints_rejects).
+      - name: is_timely
+        description: TRUE/FALSE from "Timely response?" (Yes/No). NULL if blank.
+
+  - name: stg_complaints_rejects
+    description: Rows without a valid complaint ID or date_received, kept with the reason. Expected to be empty for clean files.
+    columns:
+      - name: reject_reason
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['invalid complaint_id', 'invalid date_received']}

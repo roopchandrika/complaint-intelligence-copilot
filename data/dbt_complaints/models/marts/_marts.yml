@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: fct_complaints
+    description: Fact table. Grain = one row per CFPB complaint. Keys point to the dimensions; -1 means unknown.
+    columns:
+      - name: complaint_id
+        data_tests: [unique, not_null]
+      - name: date_received_key
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: date_sent_key
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: company_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_company'), field: company_key}
+      - name: product_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_product'), field: product_key}
+      - name: state_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_state'), field: state_key}
+      - name: complaint_count
+        description: Always 1. Additive - SUM it to count complaints.
+        data_tests:
+          - accepted_values:
+              arguments: {values: [1]}
+
+  - name: dim_date
+    description: One row per calendar day, 2011-2027, plus -1 = unknown. Role-playing (received and sent dates).
+    columns:
+      - name: date_key
+        description: YYYYMMDD as an integer.
+        data_tests: [unique, not_null]
+
+  - name: dim_company
+    description: One row per cleaned company, plus -1 = unknown.
+    columns:
+      - name: company_key
+        data_tests: [unique, not_null]
+      - name: company_name
+        data_tests: [unique, not_null]
+
+  - name: dim_product
+    description: One row per product + sub-product.
+    data_tests:
+      - unique_combination:
+          arguments: {columns: ['product', 'sub_product']}
+    columns:
+      - name: product_key
+        data_tests: [unique, not_null]
+
+  - name: dim_state
+    description: One row per state / territory code, plus -1 = unknown or invalid.
+    columns:
+      - name: state_key
+        data_tests: [unique, not_null]
+      - name: state_code
+        data_tests: [unique, not_null]
+
+  - name: agg_monthly_product
+    description: Complaints per month and product group. is_partial_month marks the incomplete current month.
+    data_tests:
+      - unique_combination:
+          arguments: {columns: ['month', 'product_group']}
+
+  - name: company_scorecard
+    description: One row per company with volume, late responses and a data-quality flag for 99%+ late companies.
+    columns:
+      - name: company
+        data_tests: [unique, not_null]
+      - name: late_pct
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 100}
+
+  - name: company_top_issues
+    description: Top 10 issues per company (ties share a rank).
+
+  - name: channel_forwarding_stats
+    description: Forwarding time (days) by submission channel - average, median and 95th percentile.
+    columns:
+      - name: submitted_via
+        data_tests: [unique, not_null]

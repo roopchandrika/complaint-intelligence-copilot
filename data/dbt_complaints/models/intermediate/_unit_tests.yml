@@ -1,0 +1,36 @@
+version: 2
+
+# Unit test: checks the company rules on fixed example names, independent of today's data.
+unit_tests:
+  - name: company_rules_merge_only_same_legal_form
+    model: int_company_lookup
+    given:
+      - input: ref('stg_complaints')
+        rows:
+          - {company_raw: "WELLS FARGO & COMPANY"}
+          - {company_raw: "Wells Fargo & Co."}
+          - {company_raw: "Credit Corp Solutions Inc."}
+          - {company_raw: "Credit Solutions LLC"}
+          - {company_raw: "INDEPENDENT BANK CORP."}
+          - {company_raw: "INDEPENDENT BANK GROUP, INC."}
+          - {company_raw: "CL Holdings LLC"}
+          - {company_raw: "IPAC'S Inc."}
+          - {company_raw: "COSTCO WHOLESALE"}
+          - {company_raw: "Bank of the West"}
+          - {company_raw: "TRANSUNION INTERMEDIATE HOLDINGS, INC."}
+      - input: ref('company_map')
+        rows:
+          - {company_norm: "TRANSUNION INTERMEDIATE", company_canonical: "TRANSUNION"}
+    expect:
+      rows:
+        - {company_raw: "WELLS FARGO & COMPANY", company: "WELLS FARGO"}
+        - {company_raw: "Wells Fargo & Co.", company: "WELLS FARGO"}
+        - {company_raw: "Credit Corp Solutions Inc.", company: "CREDIT CORP SOLUTIONS"}
+        - {company_raw: "Credit Solutions LLC", company: "CREDIT SOLUTIONS"}
+        - {company_raw: "INDEPENDENT BANK CORP.", company: "INDEPENDENT BANK CORP"}
+        - {company_raw: "INDEPENDENT BANK GROUP, INC.", company: "INDEPENDENT BANK GROUP INC"}
+        - {company_raw: "CL Holdings LLC", company: "CL HOLDINGS"}
+        - {company_raw: "IPAC'S Inc.", company: "IPACS"}
+        - {company_raw: "COSTCO WHOLESALE", company: "COSTCO WHOLESALE"}
+        - {company_raw: "Bank of the West", company: "BANK OF THE WEST"}
+        - {company_raw: "TRANSUNION INTERMEDIATE HOLDINGS, INC.", company: "TRANSUNION"}

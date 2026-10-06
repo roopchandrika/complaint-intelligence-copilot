@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    description: Raw CFPB complaints loaded by the Day 6 Bronze step (data/medallion/run_pipeline.py). Every column is text, exactly as received.
+    tables:
+      - name: complaints_raw
+        description: One row per line of the CFPB CSV, plus ingestion metadata.
+        loaded_at_field: _ingested_at
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 30, period: day}
+        columns:
+          - name: complaint_id
+            description: CFPB complaint ID as text.
+            data_tests: [not_null]
+          - name: _batch_id
+            description: Same source file -> same batch id.
+            data_tests: [not_null]

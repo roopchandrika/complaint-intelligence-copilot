@@ -1,0 +1,15 @@
+﻿16:49:03  79 of 81 PASS relationships_fct_complaints_product_key__product_key__ref_dim_product_  [PASS in 0.36s]
+16:49:03  78 of 81 PASS relationships_fct_complaints_date_sent_key__date_key__ref_dim_date_  [PASS in 0.41s]
+16:49:03  80 of 81 PASS relationships_fct_complaints_state_key__state_key__ref_dim_state_  [PASS in 0.33s]
+16:49:04  81 of 81 PASS unique_fct_complaints_complaint_id ............................... [PASS in 1.27s]
+16:49:04  
+16:49:04  Finished running 5 seeds, 12 table models, 62 data tests, 1 unit test, 1 view model in 0 hours 1 minutes and 42.08 seconds (102.08s).
+16:49:05  
+16:49:05  Completed with 1 warning:
+16:49:05  
+16:49:05  [WARNING]: in test accepted_range_int_complaints_days_to_send__0 (models\intermediate\_intermediate.yml)
+16:49:05  [WARNING]: Got 7050 results, configured to warn if >0
+16:49:05  
+16:49:05    compiled code at target\compiled\dbt_complaints\models\intermediate\_intermediate.yml\accepted_range_int_complaints_days_to_send__0.sql
+16:49:05  
+16:49:05  Done. PASS=80 WARN=1 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=81

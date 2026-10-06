@@ -1,0 +1,27 @@
+name: dbt_complaints
+version: "1.0.0"
+profile: dbt_complaints
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  dbt_complaints:
+    staging:
+      +schema: stg
+      +materialized: table      # 18M rows read by many models: build once instead of a view re-read each time
+    intermediate:
+      +schema: int
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
+
+seeds:
+  dbt_complaints:
+    +schema: seeds
