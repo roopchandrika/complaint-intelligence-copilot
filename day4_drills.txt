@@ -1,0 +1,101 @@
+﻿
+DRILL 1. SQL injection: string-building vs parameters
+   User input: "x' OR '1'='1"
+
+   UNSAFE (f-string). The SQL that reaches the server is:
+   SELECT COUNT(*) AS n FROM dbo.TBL_CASE WHERE CO_NM = 'x' OR '1'='1'
+   Rows matched: 50,000   <- the input became code: OR '1'='1' is always true
+
+   SAFE (parameter). SQL text: ... WHERE CO_NM = :co   value sent separately
+   Rows matched: 0   <- no company is literally named that
+
+   Because the login is read-only, the unsafe query could only READ too much.
+   With a write-capable login, the same mistake could delete data.
+
+DRILL 2. Permission matrix for copilot_readonly
+   operation      result
+   SELECT         ALLOWED
+   INSERT         DENIED  - error 229: The INSERT permission was denied on the object 'REF_STAT_CD', database 'BankLega
+   UPDATE         DENIED  - error 229: The UPDATE permission was denied on the object 'TBL_CASE', database 'BankLegacy'
+   DELETE         DENIED  - error 229: The DELETE permission was denied on the object 'TBL_CASE_STATUS', database 'Bank
+   CREATE TABLE   DENIED  - error 262: CREATE TABLE permission denied in database 'BankLegacy'.
+   DROP TABLE     DENIED  - error 3701: Cannot drop the table 'TBL_CASE', because it does not exist or you do not have p
+   EXEC sp_who    ALLOWED
+   (EXEC sp_who is allowed: it is a system procedure outside dbo. It only lists sessions.)
+
+DRILL 3. Discover the schema using only system catalog views
+
+   3a. Tables:
+   TABLE_SCHEMA | TABLE_NAME | TABLE_TYPE
+   dbo | REF_STAT_CD | BASE TABLE
+   dbo | TBL_CASE | BASE TABLE
+   dbo | TBL_CASE_STATUS | BASE TABLE
+
+   3b. Columns:
+   TABLE_NAME | COLUMN_NAME | DATA_TYPE | max_len | IS_NULLABLE
+   REF_STAT_CD | STAT_CD | char | 3 | NO
+   REF_STAT_CD | STAT_DESC | varchar | 50 | NO
+   TBL_CASE | CASE_ID | int | None | NO
+   TBL_CASE | CMPL_ID | bigint | None | NO
+   TBL_CASE | PRD_DESC | nvarchar | 100 | YES
+   TBL_CASE | ISS_DESC | nvarchar | 255 | YES
+   TBL_CASE | CO_NM | nvarchar | 255 | YES
+   TBL_CASE | ST_CD | char | 2 | YES
+   TBL_CASE | RCV_DT | date | None | NO
+   TBL_CASE | CHNL | varchar | 30 | YES
+   TBL_CASE | NARR_TXT | nvarchar | 4000 | YES
+   TBL_CASE_STATUS | STAT_ID | int | None | NO
+   TBL_CASE_STATUS | CASE_ID | int | None | NO
+   TBL_CASE_STATUS | STAT_CD | char | 3 | NO
+   TBL_CASE_STATUS | ASGN_TEAM | varchar | 50 | YES
+   TBL_CASE_STATUS | UPD_TS | datetime2 | None | NO
+   TBL_CASE_STATUS | CUR_FLG | bit | None | NO
+
+   3c. Foreign keys (how tables join):
+   fk_name | child_table | child_column | parent_table | parent_column
+   FK__TBL_CASE___CASE___3C69FB99 | TBL_CASE_STATUS | CASE_ID | TBL_CASE | CASE_ID
+   FK__TBL_CASE___STAT___3D5E1FD2 | TBL_CASE_STATUS | STAT_CD | REF_STAT_CD | STAT_CD
+
+   3d. Row counts:
+   table_name | row_count
+   TBL_CASE | 50000
+   TBL_CASE_STATUS | 146384
+   REF_STAT_CD | 5
+
+   3e. What the codes mean, and how often each is the CURRENT status:
+   STAT_CD | STAT_DESC | current_cases | all_history_rows
+   CLS | Closed | 38941 | 38941
+   INV | Under investigation | 7930 | 50000
+   ESC | Escalated | 2355 | 5974
+   LGL | Legal hold | 774 | 1469
+   OPN | Open | 0 | 50000
+
+   3f. The CUR_FLG trap: counting escalations with and without the current flag
+   esc_rows_all_history | esc_cases_now
+   5974 | 2355
+   Cases that WERE escalated but are now closed are only in the first number.
+
+DRILL 4. T-SQL dialect (compare with your Postgres/DuckDB queries)
+
+   4a. TOP instead of LIMIT; DATEFROMPARTS instead of date_trunc; month-level counts:
+   month | cases
+   2026-10-01 | 73
+   2026-09-01 | 1732
+   2026-08-01 | 1788
+   2026-07-01 | 1820
+   2026-06-01 | 1639
+   2026-05-01 | 1700
+
+   4b. DATEDIFF and window functions (same idea as Day 2): hours from received to current status
+   CMPL_ID | STAT_CD | hours_open | rnk
+   27870426 | LGL | 371 | 1
+   3515256 | LGL | 353 | 2
+   6284914 | LGL | 335 | 3
+   16634903 | LGL | 327 | 4
+   18520627 | LGL | 326 | 5
+
+   4c. String concatenation with + and CONCAT, and OFFSET/FETCH paging:
+   code_text | plus_text
+   CLS = Closed | CLS/Closed
+   ESC = Escalated | ESC/Escalated
+   INV = Under investigation | INV/Under investigation

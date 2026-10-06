@@ -1,0 +1,26 @@
+# Day 4: the bank's "legacy case system" - SQL Server 2022 Developer edition.
+# Start:  docker compose -f docker-compose.legacy.yml up -d
+# Stop:   docker compose -f docker-compose.legacy.yml stop
+# Passwords come from the .env file in the project root (never commit .env).
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"                 # free, full-featured, not for production
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+      MSSQL_MEMORY_LIMIT_MB: "2048"          # keep the laptop responsive
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"           # change MSSQL_PORT in .env if 1433 is taken
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -b -Q \"SELECT 1\" -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  mssql-data:

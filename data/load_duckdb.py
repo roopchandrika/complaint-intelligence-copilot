@@ -66,7 +66,7 @@ for clean, (spellings, sql_type) in TARGETS.items():
     original = next((by_norm[s] for s in spellings if s in by_norm), None)
     if original is None:
         missing.append(clean)
-        expr = "NULL" if sql_type is None else f"CAST(NULL AS {sql_type})"
+        expr = f"CAST(NULL AS {sql_type or 'VARCHAR'})"   # typed NULL: text columns stay text
     else:
         quoted = '"' + original.replace('"', '""') + '"'
         expr = quoted if sql_type is None else f"TRY_CAST({quoted} AS {sql_type})"

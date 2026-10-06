@@ -158,3 +158,57 @@
   because they can get worse.
 - Environment issues (container names, ports, shared memory, forgotten containers)
   caused as many problems as the SQL itself.
+
+## Day 4 — Legacy enterprise databases: SQL Server, drivers, safe access (2026-10-06)
+
+### What I built
+- docker-compose.legacy.yml: SQL Server 2022 in Docker, playing the bank's old case system.
+- 01_schema.sql: legacy-style tables (TBL_CASE, TBL_CASE_STATUS, REF_STAT_CD) with
+  short cryptic column names, status codes and a "current status" flag.
+- setup_legacy.py: loads 50,000 complaints from DuckDB as cases, plus a generated
+  status history for each case.
+- 02_readonly_login.sql: a login called copilot_readonly that can only SELECT.
+- legacy_client.py: read-only functions the agent will use later (current status,
+  case history, escalated cases, status counts). Every value is sent as a parameter.
+- tests/test_readonly.py: 15 tests proving the login can read but never write.
+- drills_legacy.py: SQL injection demo, permission table, schema discovery, T-SQL syntax.
+- legacy_schema.md: plain-English guide to the schema for the AI (Day 17).
+- soap_demo.py: called a SOAP web service and turned the XML answer into JSON.
+
+### Problems I hit and how I fixed them
+- setup_legacy.py failed: "No function matches left(INTEGER, ...)". My Day 2 loader filled
+  missing columns with a plain NULL, which DuckDB stored as a number column, not text.
+  Fix: cast columns to the expected type when reading, and fixed the loader to create
+  missing columns as text. Lesson: an empty column still has a type, so set it explicitly.
+- The script could not connect: my computer only had the very old built-in "SQL Server"
+  ODBC driver, which cannot handle the encryption SQL Server 2022 uses.
+  Fix: installed "ODBC Driver 18 for SQL Server" (winget was not available, so I used
+  Microsoft's installer). A new terminal was needed before Python could see it.
+
+### Numbers
+- Setup: 50,000 cases and 146,384 status rows loaded in 247 seconds.
+- Current status of the 50,000 cases: 38,941 closed, 7,930 under investigation,
+  2,355 escalated, 774 on legal hold.
+- Tests: 15 passed in 0.57 seconds (7 kinds of writes and schema changes denied).
+- SQL injection drill: the same input matched all 50,000 cases when pasted into the SQL
+  text, and 0 cases when sent as a parameter.
+
+### What I learned
+- SQL injection happens when user input is pasted into SQL text: the input becomes code.
+  Parameters send the SQL and the values separately, so values can never become code.
+- Parameters can only replace values, not table or column names. For a user-chosen sort
+  column, map the choice to an allow-list of names I wrote myself.
+- In a LIKE search, user input can contain % or _ wildcards. Escape them, or "%" matches
+  every company.
+- Least privilege: the copilot's login can only SELECT. Even if a query is wrong or
+  injected, it cannot change or delete data. My tests prove this, not just the setup script.
+- DENY always beats GRANT in SQL Server. I granted SELECT and denied everything else.
+- A login is who you are on the server; a user is what you may do inside one database.
+- Python reaches SQL Server through layers: pyodbc talks to the ODBC driver, which talks
+  to the server. SQLAlchemy adds connection pooling, timeouts and parameter handling on top.
+- Legacy schemas need a written guide. Without "CUR_FLG = 1 means current status", any
+  count that joins the status history counts each case several times.
+- I can discover an unknown schema using only system views: INFORMATION_SCHEMA for tables
+  and columns, sys.foreign_keys for how tables join.
+- SOAP services describe themselves in a WSDL file. Zeep reads it, builds the XML request,
+  and turns the XML answer into Python objects I can save as JSON.
